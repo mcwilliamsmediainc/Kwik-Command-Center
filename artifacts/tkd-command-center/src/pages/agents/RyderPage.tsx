@@ -58,32 +58,25 @@ export function RyderPage() {
     setLoading(true);
 
     try {
-      const apiKey = import.meta.env.VITE_ANTHROPIC_KEY as string | undefined;
-      if (!apiKey) throw new Error("VITE_ANTHROPIC_KEY is not set.");
-
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 512,
           system: SYSTEM_PROMPT,
           messages: next.map((m) => ({ role: m.role, content: m.content })),
         }),
       });
 
+      const data = await res.json() as {
+        content?: Array<{ type: string; text: string }>;
+        error?: string;
+      };
+
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error((err as { error?: { message?: string } }).error?.message ?? `HTTP ${res.status}`);
+        throw new Error(data.error ?? `HTTP ${res.status}`);
       }
 
-      const data = await res.json() as { content: Array<{ type: string; text: string }> };
-      const reply = data.content.find((b) => b.type === "text")?.text ?? "Sorry, I couldn't generate a response.";
+      const reply = data.content?.find((b) => b.type === "text")?.text ?? "Sorry, I couldn't generate a response.";
       setMessages([...next, { role: "assistant", content: reply }]);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong.";
@@ -128,10 +121,7 @@ export function RyderPage() {
             <p className="text-xs" style={{ color: "#3db54a" }}>Active · answering customer questions</p>
           </div>
           <div className="ml-auto flex items-center gap-1.5">
-            <span
-              className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: "#3db54a" }}
-            />
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "#3db54a" }} />
             <span className="text-xs font-medium" style={{ color: "#6b7a90" }}>Live</span>
           </div>
         </div>
@@ -143,20 +133,15 @@ export function RyderPage() {
               key={i}
               className={`flex items-start gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
             >
-              {/* Avatar */}
               <div
                 className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                style={{
-                  backgroundColor: msg.role === "assistant" ? "#eff4ff" : "#f0f0f0",
-                }}
+                style={{ backgroundColor: msg.role === "assistant" ? "#eff4ff" : "#f0f0f0" }}
               >
                 {msg.role === "assistant"
                   ? <Bot className="w-4 h-4" style={{ color: "#2b4fac" }} />
                   : <User className="w-4 h-4" style={{ color: "#6b7a90" }} />
                 }
               </div>
-
-              {/* Bubble */}
               <div
                 className="max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed"
                 style={
@@ -170,7 +155,6 @@ export function RyderPage() {
             </div>
           ))}
 
-          {/* Typing indicator */}
           {loading && (
             <div className="flex items-start gap-3">
               <div
@@ -204,11 +188,7 @@ export function RyderPage() {
               onClick={() => handleQuickReply(q)}
               disabled={loading}
               className="text-xs font-medium px-3 py-1.5 rounded-full transition-colors disabled:opacity-50"
-              style={{
-                border: "1px solid #dbe3f8",
-                color: "#2b4fac",
-                backgroundColor: "#f4f6fd",
-              }}
+              style={{ border: "1px solid #dbe3f8", color: "#2b4fac", backgroundColor: "#f4f6fd" }}
               data-testid={`quick-reply-${q.toLowerCase().replace(/\s+/g, "-")}`}
             >
               {q}
@@ -228,12 +208,8 @@ export function RyderPage() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask Ryder something..."
             disabled={loading}
-            className="flex-1 text-sm px-4 py-2.5 rounded-full outline-none transition-colors disabled:opacity-60"
-            style={{
-              border: "1px solid #e4e8f0",
-              backgroundColor: "#f9fafb",
-              color: "#1a2333",
-            }}
+            className="flex-1 text-sm px-4 py-2.5 rounded-full outline-none disabled:opacity-60"
+            style={{ border: "1px solid #e4e8f0", backgroundColor: "#f9fafb", color: "#1a2333" }}
             data-testid="input-ryder-chat"
           />
           <button
@@ -270,7 +246,7 @@ export function RyderPage() {
           </div>
         </div>
 
-        {/* Top Questions Today */}
+        {/* Top Questions */}
         <div
           className="bg-white rounded-lg overflow-hidden"
           style={{ border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
@@ -282,8 +258,7 @@ export function RyderPage() {
           </div>
           <div className="px-4 py-3 space-y-3">
             {TOP_QUESTIONS.map((item, i) => {
-              const max = TOP_QUESTIONS[0].count;
-              const pct = Math.round((item.count / max) * 100);
+              const pct = Math.round((item.count / TOP_QUESTIONS[0].count) * 100);
               return (
                 <div key={item.question}>
                   <div className="flex items-center justify-between mb-1">
@@ -292,7 +267,7 @@ export function RyderPage() {
                   </div>
                   <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "#f0f2f5" }}>
                     <div
-                      className="h-full rounded-full transition-all"
+                      className="h-full rounded-full"
                       style={{
                         width: `${pct}%`,
                         backgroundColor: i === 0 ? "#2b4fac" : i === 1 ? "#3db54a" : "#94a3b8",
