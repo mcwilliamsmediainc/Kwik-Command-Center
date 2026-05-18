@@ -1,50 +1,54 @@
 import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard,
-  Bot,
+  MessageCircle,
   Radio,
-  BookOpen,
-  Search,
+  TrendingUp,
+  BarChart2,
   Inbox,
-  MessageSquare,
+  Sparkles,
   Users,
   RefreshCw,
-  GitBranch,
-  BadgeDollarSign,
+  ClipboardList,
+  UserCheck,
   Settings,
 } from "lucide-react";
 
 const NAV_SECTIONS = [
   {
     title: "OVERVIEW",
-    items: [{ name: "Dashboard", href: "/", icon: LayoutDashboard }],
+    items: [
+      { name: "Dashboard", href: "/", icon: LayoutDashboard, sub: "" },
+    ],
   },
   {
     title: "AGENTS",
     items: [
-      { name: "Ryder", href: "/agents/ryder", icon: Bot },
-      { name: "Dispatch", href: "/agents/dispatch", icon: Radio },
-      { name: "Ledger", href: "/agents/ledger", icon: BookOpen },
-      { name: "Scout", href: "/agents/scout", icon: Search },
+      { name: "Ryder", href: "/agents/ryder", icon: MessageCircle, sub: "Customer AI" },
+      { name: "Dispatch", href: "/agents/dispatch", icon: Radio, sub: "Call Center" },
+      { name: "Ledger", href: "/agents/ledger", icon: TrendingUp, sub: "Finance & QB" },
+      { name: "Scout", href: "/agents/scout", icon: BarChart2, sub: "Marketing" },
     ],
   },
   {
     title: "INBOX",
-    items: [{ name: "Unified Inbox", href: "/inbox", icon: Inbox }],
+    items: [
+      { name: "Unified Inbox", href: "/inbox", icon: Inbox, sub: "All Channels" },
+    ],
   },
   {
     title: "INTELLIGENCE",
     items: [
-      { name: "Ask", href: "/intelligence/ask", icon: MessageSquare },
-      { name: "Customers", href: "/intelligence/customers", icon: Users },
-      { name: "Reactivation", href: "/intelligence/reactivation", icon: RefreshCw },
+      { name: "Ask", href: "/intelligence/ask", icon: Sparkles, sub: "Business Intel" },
+      { name: "Customers", href: "/intelligence/customers", icon: Users, sub: "Memory Layer" },
+      { name: "Reactivation", href: "/intelligence/reactivation", icon: RefreshCw, sub: "Win-Back" },
     ],
   },
   {
     title: "OPERATIONS",
     items: [
-      { name: "Job Pipeline", href: "/operations/jobs", icon: GitBranch },
-      { name: "Team & Pay", href: "/operations/team", icon: BadgeDollarSign },
+      { name: "Job Pipeline", href: "/operations/jobs", icon: ClipboardList, sub: "HouseCall Pro" },
+      { name: "Team & Pay", href: "/operations/team", icon: UserCheck, sub: "Contractors" },
     ],
   },
 ];
@@ -115,8 +119,23 @@ export function Sidebar() {
                         )}
 
                         <Icon className="w-4 h-4 flex-shrink-0 relative z-10" />
-                        <span className="relative z-10 group-hover:text-white transition-colors leading-none">
-                          {item.name}
+                        <span className="relative z-10 flex flex-col min-w-0">
+                          <span className="group-hover:text-white transition-colors leading-none">
+                            {item.name}
+                          </span>
+                          {item.sub && (
+                            <span
+                              style={{
+                                fontSize: 9,
+                                color: "rgba(255,255,255,0.35)",
+                                display: "block",
+                                marginTop: 1,
+                                lineHeight: 1,
+                              }}
+                            >
+                              {item.sub}
+                            </span>
+                          )}
                         </span>
                       </span>
                     </Link>
