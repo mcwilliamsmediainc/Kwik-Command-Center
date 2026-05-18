@@ -59,13 +59,25 @@ export function Sidebar() {
 
       {/* Logo */}
       <div
-        className="flex items-center gap-2.5 px-4 h-14 flex-shrink-0"
+        className="flex flex-col items-center flex-shrink-0 py-3"
         style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
       >
-        <span className="tkd-badge font-bold text-xs px-2 py-1 rounded tracking-wider flex-shrink-0">
-          TKD
+        <img
+          src="/kwikdry-logo.png"
+          alt="Kwik Dry"
+          style={{ maxWidth: 160, height: "auto", display: "block", margin: "0 auto" }}
+        />
+        <span
+          style={{
+            color: "rgba(255,255,255,0.35)",
+            fontSize: 9,
+            textTransform: "uppercase",
+            letterSpacing: "1.5px",
+            marginTop: 6,
+          }}
+        >
+          Command Center
         </span>
-        <span className="text-white text-sm font-semibold tracking-tight">Command Center</span>
       </div>
 
       {/* Nav */}
