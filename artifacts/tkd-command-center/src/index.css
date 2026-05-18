@@ -247,6 +247,14 @@
 }
 
 /* ── TKD Sidebar hard-lock ─────────────────────────────────── */
+.tkd-sidebar,
+.sidebar,
+nav,
+[class*="sidebar"],
+[class*="Sidebar"] {
+  background-color: #1e2a3a !important;
+}
+
 .tkd-sidebar {
   background-color: #1e2a3a !important;
 }

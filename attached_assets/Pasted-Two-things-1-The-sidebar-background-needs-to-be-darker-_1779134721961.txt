@@ -1,0 +1,68 @@
+Two things:
+
+1. The sidebar background needs to be darker. Force it to 
+exactly #1e2a3a with this in the CSS:
+.sidebar, nav, [class*="sidebar"], [class*="Sidebar"] {
+  background-color: #1e2a3a !important;
+}
+Also make sure the very top of the sidebar has a 2px gradient 
+line: linear-gradient(90deg, #2b4fac, #3db54a)
+
+2. Now build the Ledger page with Finn the AI financial 
+advisor. Here's what it needs:
+
+TOP: 4 KPI cards:
+- Monthly Revenue: $8,240 (↑14% vs April, green accent)
+- Total Expenses: $3,180 (on budget, red accent)  
+- Net Profit: $5,060 (61% margin, blue accent)
+- Payroll Due: $1,840 (in 4 days May 15, yellow accent)
+
+MAIN LAYOUT: Two columns
+
+LEFT — Finn AI Chat (larger column):
+- Header with Finn avatar (green gradient F icon), name "Finn", 
+  subtitle "AI Financial Advisor · Connected to QuickBooks"
+- Green "Connected" badge
+- Quick action buttons (green style):
+  "Monthly check-in" | "Expense check" | "What to watch" | 
+  "Benchmark me" | "Revenue pace"
+- Chat interface — Finn's opening message:
+  "Hey — I'm Finn, your QuickBooks-connected financial advisor 
+  for Tulsa Kwik Dry. I can review your P&L, flag unusual 
+  expenses, benchmark your margins against other cleaning 
+  businesses, and give you specific advice on what to watch. 
+  What would you like to dig into?"
+- Connect to /api/chat with Finn's financial system prompt
+
+RIGHT COLUMN — two stacked cards:
+Card 1 — P&L Summary May 2026:
+- Carpet Cleaning: +$4,120
+- Upholstery: +$1,840  
+- Air Duct Cleaning: +$1,494
+- Other Services: +$786
+- Divider line
+- Total Revenue: +$8,240
+- Supplies & Materials: -$480
+- Contractor Pay: -$1,840
+- Marketing & Ads: -$620
+- Software & Tools: -$240
+- Divider line
+- Net Profit: +$5,060
+
+Card 2 — Technician Pay:
+- Peyton: 18 jobs · $720 (blue avatar)
+- Anthony: 15 jobs · $600 (orange avatar)
+- Evan: 13 jobs · $520 (green avatar)
+- Total Due: $1,840
+- "Process Payroll" blue button
+
+Finn's system prompt should include:
+- He is a financial advisor for Tulsa Kwik Dry
+- Industry benchmarks: labor 18-25% of revenue, 
+  marketing 5-10%, supplies 3-8%
+- Current data: Revenue $8,240, Expenses $3,180, 
+  Net profit $5,060, 61% margin
+- Contractor pay: Peyton $720, Anthony $600, Evan $520
+- Payroll due May 15
+- He gives specific actionable advice, not generic answers
+- Always recommends consulting a CPA for tax matters
