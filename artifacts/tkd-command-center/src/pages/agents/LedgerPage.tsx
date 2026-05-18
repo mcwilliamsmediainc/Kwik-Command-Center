@@ -257,7 +257,7 @@ export function LedgerPage() {
                 onClick={() => sendMessage(q)}
                 disabled={loading}
                 className="text-xs font-medium px-3 py-1.5 rounded-full transition-colors disabled:opacity-50"
-                style={{ border: "1px solid #bbf7d0", color: "#15803d", backgroundColor: "#f0fdf4" }}
+                style={{ border: "1px solid #bbf7d0", color: "#16a34a", backgroundColor: "#dcfce7" }}
                 data-testid={`quick-action-${q.toLowerCase().replace(/\s+/g, "-")}`}
               >
                 {q}

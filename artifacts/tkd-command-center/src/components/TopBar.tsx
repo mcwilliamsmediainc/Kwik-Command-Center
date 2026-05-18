@@ -3,16 +3,16 @@ import { useLocation } from "wouter";
 
 const PAGE_TITLES: Record<string, string> = {
   "/": "Dashboard",
-  "/agents/ryder": "Ryder Agent",
-  "/agents/dispatch": "Dispatch Agent",
-  "/agents/ledger": "Ledger Agent",
-  "/agents/scout": "Scout Agent",
+  "/agents/ryder": "Ryder",
+  "/agents/dispatch": "Dispatch",
+  "/agents/ledger": "Ledger",
+  "/agents/scout": "Scout",
   "/inbox": "Unified Inbox",
-  "/intelligence/ask": "Ask TKD",
+  "/intelligence/ask": "Ask",
   "/intelligence/customers": "Customers",
   "/intelligence/reactivation": "Reactivation",
   "/operations/jobs": "Job Pipeline",
-  "/operations/team": "Team & Pay"
+  "/operations/team": "Team & Pay",
 };
 
 export function TopBar() {
@@ -25,7 +25,7 @@ export function TopBar() {
       style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.02)" }}
     >
       <div>
-        <h1 className="text-[1a2333] font-semibold text-lg">{title}</h1>
+        <h1 className="font-semibold text-lg" style={{ color: "#1a2333" }}>{title}</h1>
       </div>
       
       <div className="flex items-center gap-4">
