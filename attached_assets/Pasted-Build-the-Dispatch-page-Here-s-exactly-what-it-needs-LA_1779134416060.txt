@@ -1,0 +1,63 @@
+Build the Dispatch page. Here's exactly what it needs:
+
+LAYOUT: Two columns — thread list on left (300px wide), 
+active conversation on right
+
+LEFT COLUMN — WhatsApp Message Threads:
+Show 5 message threads with these details:
+- Sandra Williams | WhatsApp | "Pricing — L-shaped sectional" 
+  | 10:42 AM | NEEDS APPROVAL badge (yellow)
+- Tom Harrison | WhatsApp | "Complaint — tech was 20 min late" 
+  | 10:18 AM | ESCALATED badge (orange)  
+- Lisa Martinez | SMS | "Booking confirmed — wants Peyton" 
+  | 9:55 AM | SENT badge (green)
+- Jennifer Hayes | Facebook | "Asked about tile cleaning" 
+  | 9:20 AM | ANSWERED badge (blue)
+- David Park | Email | "Quote follow-up — air duct bundle" 
+  | Yesterday | PENDING badge (gray)
+
+Each thread shows: channel icon, customer name, preview text, 
+time, and status badge. Active thread is highlighted.
+
+RIGHT COLUMN — Active Conversation (Sandra Williams):
+- Header: customer name, channel, job history 
+  (4 jobs, LTV $847, last service March 15)
+- Message bubbles showing the conversation:
+  Message 1 (Dispatch/system, gray bubble, left): 
+  "CUSTOMER: Sandra Williams · Pricing — L-shaped sectional 
+  (large) · 918-441-7823 · Not urgent"
+  Message 2 (customer, right, blue bubble): 
+  "Hi! How much would it cost to clean my L-shaped sectional? 
+  It's pretty large, maybe 6-7 seats."
+
+- APPROVAL ZONE below messages (yellow background box):
+  Label: "Ryder Draft — Pending Approval"
+  Draft text: "Hi Sandra! For an L-shaped sectional that size, 
+  you're looking at $145–$175 depending on the exact seat 
+  count. Includes cleaning, deodorizing, disinfecting & 
+  protecting — all-natural citrus, safe for kids and pets. 
+  Dry in about an hour. Want me to check availability? 📅"
+  Three buttons: green "Send" button, gray "Edit" button, 
+  gray "Take Over" button
+
+- Input area at bottom: text input + "Ryder Draft" button 
+  + send button
+
+TOP KPI CARDS (4 cards above the columns):
+- Avg First Response: 0:43 (vs 6+ hr industry avg)
+- Messages Today: 47 (38 auto-handled by Ryder)
+- Pending Approval: 3
+- Leads < 1 min: 94% (+38% conversion lift)
+
+Add a message template card below the thread list:
+Title: "Call Center Message Format"
+Content showing the structured format:
+CUSTOMER: [Name]
+ISSUE: [Category — detail]  
+PHONE: [Number]
+URGENT: [Yes / No]
+
+Make clicking different threads switch the active conversation.
+Connect the "Ryder Draft" button to the Anthropic API 
+(/api/chat) to generate a contextual reply draft based on 
+the customer's message and their history.
