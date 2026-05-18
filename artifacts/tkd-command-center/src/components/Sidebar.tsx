@@ -5,7 +5,7 @@ import {
   Radio,
   TrendingUp,
   BarChart2,
-  Inbox,
+  Mail,
   Sparkles,
   Users,
   RefreshCw,
@@ -33,7 +33,7 @@ const NAV_SECTIONS = [
   {
     title: "INBOX",
     items: [
-      { name: "Unified Inbox", href: "/inbox", icon: Inbox, sub: "All Channels" },
+      { name: "Unified Inbox", href: "/inbox", icon: Mail, sub: "All Channels" },
     ],
   },
   {
