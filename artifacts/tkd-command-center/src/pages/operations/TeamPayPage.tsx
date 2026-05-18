@@ -1,111 +1,123 @@
-import { DollarSign, Clock, Download } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Plus, Star, Briefcase, DollarSign, TrendingUp } from "lucide-react";
 
-const TEAM = [
-  { id: "T-01", name: "Marcus Johnson", role: "Lead Tech", status: "On Duty", hours: 38.5, rate: "$28.00", pay: "$1,078.00" },
-  { id: "T-02", name: "David Miller", role: "Technician", status: "On Duty", hours: 36.0, rate: "$22.00", pay: "$792.00" },
-  { id: "T-03", name: "James Wilson", role: "Technician", status: "Off Duty", hours: 42.5, rate: "$24.00", pay: "$1,050.00" }, // 40 * 24 + 2.5 * 36
-  { id: "T-04", name: "Sarah Davis", role: "Dispatcher", status: "On Duty", hours: 35.0, rate: "$25.00", pay: "$875.00" },
-  { id: "T-05", name: "Tommy Lee", role: "Apprentice", status: "On Duty", hours: 28.0, rate: "$18.00", pay: "$504.00" },
+/* ─── Data ────────────────────────────────────────────────────── */
+const TECHS = [
+  {
+    name: "Peyton", initials: "P", color: "#2b4fac",
+    jobs: 18, revenue: "$3,240", pay: "$720", rating: "5.0",
+  },
+  {
+    name: "Anthony", initials: "A", color: "#f97316",
+    jobs: 15, revenue: "$2,740", pay: "$600", rating: "5.0",
+  },
+  {
+    name: "Evan", initials: "E", color: "#3db54a",
+    jobs: 13, revenue: "$2,260", pay: "$520", rating: "5.0",
+  },
 ];
 
+interface StatRowProps { icon: typeof Briefcase; label: string; value: string; color: string }
+
+function StatRow({ icon: Icon, label, value, color }: StatRowProps) {
+  return (
+    <div className="flex items-center justify-between py-2.5" style={{ borderBottom: "1px solid #f5f5f5" }}>
+      <div className="flex items-center gap-2.5">
+        <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: `${color}14` }}>
+          <Icon className="w-3.5 h-3.5" style={{ color }} />
+        </div>
+        <span className="text-sm" style={{ color: "#6b7a90" }}>{label}</span>
+      </div>
+      <span className="text-sm font-bold" style={{ color: "#1a2333" }}>{value}</span>
+    </div>
+  );
+}
+
+/* ─── Component ──────────────────────────────────────────────── */
 export function TeamPayPage() {
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-end">
+    <div className="flex flex-col gap-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a2333]">Team & Pay</h1>
-          <p className="text-[#6b7a90] text-sm mt-1">Manage personnel, hours, and payroll</p>
+          <p className="text-xs font-semibold uppercase" style={{ color: "#6b7a90", letterSpacing: "0.6px" }}>May 2026</p>
         </div>
-        <div className="flex gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-[#1a2333] rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm">
-            <Download className="w-4 h-4" />
-            Export Payroll
-          </button>
-        </div>
+        <button className="flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-md"
+          style={{ backgroundColor: "#2b4fac", color: "#fff" }}
+          data-testid="button-add-technician">
+          <Plus className="w-3.5 h-3.5" />Add Technician
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <Card className="bg-white border-[rgba(0,0,0,0.07)] shadow-sm">
-          <CardContent className="p-5 flex justify-between items-center">
-            <div>
-              <p className="text-sm font-medium text-[#6b7a90] mb-1">Total Hours (This Week)</p>
-              <div className="flex items-end gap-2">
-                <p className="text-3xl font-bold text-[#1a2333]">180.0</p>
-                <span className="text-sm text-green-500 font-medium mb-1">-2.5 hrs vs last wk</span>
+      {/* Tech cards */}
+      <div className="grid grid-cols-3 gap-5">
+        {TECHS.map((t) => (
+          <div key={t.name} className="bg-white rounded-xl overflow-hidden"
+            style={{ border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", borderTop: `2px solid ${t.color}` }}>
+            {/* Card header */}
+            <div className="px-6 py-5 flex flex-col items-center" style={{ borderBottom: "1px solid #f0f0f0" }}>
+              {/* Avatar */}
+              <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-3"
+                style={{ backgroundColor: t.color }}>
+                {t.initials}
+              </div>
+              <p className="text-lg font-bold mb-1" style={{ color: "#1a2333" }}>{t.name}</p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: "#f1f5f9", color: "#475569" }}>
+                  1099 Contractor
+                </span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0" }}>
+                  Active
+                </span>
               </div>
             </div>
-            <div className="p-3 rounded-full bg-indigo-50 text-indigo-600">
-              <Clock className="w-6 h-6" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-white border-[rgba(0,0,0,0.07)] shadow-sm">
-          <CardContent className="p-5 flex justify-between items-center">
-            <div>
-              <p className="text-sm font-medium text-[#6b7a90] mb-1">Estimated Payroll</p>
-              <div className="flex items-end gap-2">
-                <p className="text-3xl font-bold text-[#1a2333]">$4,299.00</p>
-                <span className="text-sm text-red-500 font-medium mb-1">+$150 vs last wk</span>
-              </div>
-            </div>
-            <div className="p-3 rounded-full bg-green-50 text-[#3db54a]">
-              <DollarSign className="w-6 h-6" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
-      <Card className="bg-white border-[rgba(0,0,0,0.07)] shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
-        <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-xl">
-          <h3 className="font-semibold text-[#1a2333]">Team Members</h3>
-        </div>
-        
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-white text-[#6b7a90] font-medium border-b border-gray-100">
-                <tr>
-                  <th className="px-6 py-4">Name</th>
-                  <th className="px-6 py-4">Role</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Hours (Week)</th>
-                  <th className="px-6 py-4 text-right">Pay Rate</th>
-                  <th className="px-6 py-4 text-right">Est. Pay</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {TEAM.map((member) => (
-                  <tr key={member.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-[#1a2333]">{member.name}</div>
-                      <div className="text-xs text-[#6b7a90]">{member.id}</div>
-                    </td>
-                    <td className="px-6 py-4 text-[#6b7a90]">{member.role}</td>
-                    <td className="px-6 py-4">
-                      <Badge className={`
-                        border-none font-medium px-2 py-0.5 shadow-none
-                        ${member.status === 'On Duty' ? 'bg-green-100 text-[#3db54a] hover:bg-green-100' : 'bg-gray-100 text-gray-600 hover:bg-gray-100'}
-                      `}>
-                        {member.status}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 text-right font-medium">
-                      <span className={member.hours > 40 ? "text-amber-600" : "text-[#1a2333]"}>
-                        {member.hours.toFixed(1)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right text-[#6b7a90]">{member.rate}/hr</td>
-                    <td className="px-6 py-4 text-right font-semibold text-[#1a2333]">{member.pay}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {/* Stats */}
+            <div className="px-6 py-2">
+              <StatRow icon={Briefcase}   label="Jobs This Month"    value={`${t.jobs} jobs`} color={t.color} />
+              <StatRow icon={TrendingUp}  label="Revenue Generated"  value={t.revenue}        color={t.color} />
+              <StatRow icon={DollarSign}  label="Contractor Pay"     value={t.pay}            color={t.color} />
+              <div className="flex items-center justify-between py-2.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: `#eab30814` }}>
+                    <Star className="w-3.5 h-3.5" style={{ color: "#eab308" }} />
+                  </div>
+                  <span className="text-sm" style={{ color: "#6b7a90" }}>Avg Rating</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Star className="w-3.5 h-3.5 fill-current" style={{ color: "#eab308" }} />
+                  <span className="text-sm font-bold" style={{ color: "#1a2333" }}>{t.rating}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 pb-5">
+              <button className="w-full py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-80"
+                style={{ backgroundColor: `${t.color}14`, color: t.color, border: `1px solid ${t.color}30` }}
+                data-testid={`button-view-jobs-${t.name.toLowerCase()}`}>
+                View Jobs →
+              </button>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        ))}
+      </div>
+
+      {/* Summary row */}
+      <div className="grid grid-cols-3 gap-5">
+        {[
+          { label: "Total Jobs Completed", value: "46", color: "#2b4fac" },
+          { label: "Total Revenue Generated", value: "$8,240", color: "#3db54a" },
+          { label: "Total Payroll Due", value: "$1,840", color: "#f97316" },
+        ].map((s) => (
+          <div key={s.label} className="bg-white rounded-lg px-5 py-4 flex items-center justify-between"
+            style={{ border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+            <p className="text-sm" style={{ color: "#6b7a90" }}>{s.label}</p>
+            <p className="text-xl font-bold" style={{ color: s.color }}>{s.value}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

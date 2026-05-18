@@ -1,100 +1,115 @@
-import { Plus, MoreHorizontal, Calendar, MapPin } from "lucide-react";
+import { RefreshCw, CheckCircle, Clock, AlertCircle, Loader } from "lucide-react";
 
-const PIPELINE = [
-  {
-    id: "col-new",
-    title: "New Requests",
-    color: "border-blue-200 bg-blue-50/30",
-    headerColor: "bg-blue-100 text-blue-800",
-    cards: [
-      { id: "J-8501", customer: "Lisa Wong", service: "Water Extraction", address: "1422 E 3rd St", time: "ASAP" },
-      { id: "J-8502", customer: "Pine Plaza", service: "Carpet Cleaning", address: "8800 S Yale Ave", time: "Flexible" }
-    ]
-  },
-  {
-    id: "col-scheduled",
-    title: "Scheduled",
-    color: "border-amber-200 bg-amber-50/30",
-    headerColor: "bg-amber-100 text-amber-800",
-    cards: [
-      { id: "J-8493", customer: "Michael Chen", service: "Mold Remediation", address: "4410 S Peoria Ave", time: "Today, 2:00 PM" },
-      { id: "J-8495", customer: "The Meridia", service: "Tile & Grout", address: "112 W 7th St", time: "Tomorrow, 9:00 AM" }
-    ]
-  },
-  {
-    id: "col-progress",
-    title: "In Progress",
-    color: "border-purple-200 bg-purple-50/30",
-    headerColor: "bg-purple-100 text-purple-800",
-    cards: [
-      { id: "J-8492", customer: "Sarah Jenkins", service: "Water Extraction", address: "8411 S Florence", time: "Started 9:00 AM" }
-    ]
-  },
-  {
-    id: "col-completed",
-    title: "Completed",
-    color: "border-green-200 bg-green-50/30",
-    headerColor: "bg-green-100 text-green-800",
-    cards: [
-      { id: "J-8491", customer: "Oakwood Apts", service: "Carpet Cleaning", address: "Unit 4B", time: "Finished 8:15 AM" },
-      { id: "J-8488", customer: "City Library", service: "Upholstery", address: "Main Branch", time: "Finished Yesterday" }
-    ]
-  }
+/* ─── Data ────────────────────────────────────────────────────── */
+const KPIS = [
+  { label: "Scheduled Today", value: "5", sub: "ready to go",       accent: "#2b4fac" },
+  { label: "In Progress",     value: "2", sub: "currently running",  accent: "#f97316" },
+  { label: "Completed Today", value: "3", sub: "jobs finished",      accent: "#3db54a" },
+  { label: "Pending Confirm", value: "3", sub: "awaiting reply",     accent: "#eab308" },
 ];
 
+type Status = "Complete" | "In Progress" | "Scheduled" | "Pending";
+
+interface Job {
+  time: string; customer: string; services: string;
+  tech: string; location: string; value: string; status: Status;
+}
+
+const JOBS: Job[] = [
+  { time: "8:00 AM",  customer: "Oakwood Apartments", services: "Carpet Cleaning · 4BR",       tech: "Peyton",  location: "Unit 4B, Oakwood",     value: "$280", status: "Complete"   },
+  { time: "8:30 AM",  customer: "City Library",        services: "Upholstery · 6 pieces",      tech: "Anthony", location: "Main Branch",           value: "$320", status: "Complete"   },
+  { time: "9:00 AM",  customer: "Sandra Williams",     services: "Sectional · L-shape",         tech: "Evan",    location: "1842 E 34th St",        value: "$165", status: "Complete"   },
+  { time: "10:30 AM", customer: "River Creek HOA",     services: "Carpet Cleaning · Common",   tech: "Peyton",  location: "River Creek Clubhouse", value: "$420", status: "In Progress"},
+  { time: "11:00 AM", customer: "Tom Harrison",        services: "Carpet + Air Ducts",          tech: "Anthony", location: "4410 S Peoria Ave",     value: "$375", status: "In Progress"},
+  { time: "1:00 PM",  customer: "Lisa Monroe",         services: "Carpet 3BR + Air Ducts",     tech: "Evan",    location: "8811 S Harvard Ave",    value: "$390", status: "Scheduled"  },
+  { time: "3:30 PM",  customer: "James Petrov",        services: "Sofa + Loveseat",            tech: "Peyton",  location: "312 W 6th St",          value: "$195", status: "Scheduled"  },
+];
+
+const STATUS_CONFIG: Record<Status, { bg: string; text: string; border: string; icon: typeof CheckCircle }> = {
+  "Complete":    { bg: "#f0fdf4", text: "#15803d", border: "#bbf7d0", icon: CheckCircle  },
+  "In Progress": { bg: "#fff7ed", text: "#c2410c", border: "#fed7aa", icon: Loader       },
+  "Scheduled":   { bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe", icon: Clock        },
+  "Pending":     { bg: "#fefce8", text: "#854d0e", border: "#fde68a", icon: AlertCircle  },
+};
+
+const TECH_COLORS: Record<string, string> = {
+  Peyton: "#2b4fac", Anthony: "#f97316", Evan: "#3db54a",
+};
+
+/* ─── Component ──────────────────────────────────────────────── */
 export function JobPipelinePage() {
   return (
-    <div className="flex flex-col h-[calc(100vh-100px)]">
-      <div className="flex justify-between items-end mb-6 shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold text-[#1a2333]">Job Pipeline</h1>
-          <p className="text-[#6b7a90] text-sm mt-1">Track service tickets from request to completion</p>
-        </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-[#2b4fac] text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm">
-          <Plus className="w-4 h-4" />
-          New Job
-        </button>
-      </div>
-
-      <div className="flex-1 flex gap-6 overflow-x-auto pb-4">
-        {PIPELINE.map((column) => (
-          <div key={column.id} className={`flex flex-col w-[320px] shrink-0 rounded-xl border ${column.color}`}>
-            <div className="p-3 border-b border-[rgba(0,0,0,0.05)] flex justify-between items-center">
-              <div className={`px-2.5 py-1 rounded-md text-xs font-semibold ${column.headerColor}`}>
-                {column.title} <span className="ml-1 opacity-70">{column.cards.length}</span>
-              </div>
-              <button className="text-gray-400 hover:text-gray-600">
-                <MoreHorizontal className="w-4 h-4" />
-              </button>
-            </div>
-            
-            <div className="flex-1 p-3 space-y-3 overflow-y-auto">
-              {column.cards.map((card) => (
-                <div key={card.id} className="bg-white p-4 rounded-lg shadow-sm border border-[rgba(0,0,0,0.07)] hover:shadow-md transition-shadow cursor-grab group">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-xs font-medium text-[#2b4fac] bg-blue-50 px-1.5 py-0.5 rounded">{card.id}</span>
-                    <button className="text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity hover:text-gray-600">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <h4 className="font-semibold text-[#1a2333] mb-1">{card.customer}</h4>
-                  <p className="text-xs font-medium text-[#6b7a90] mb-3">{card.service}</p>
-                  
-                  <div className="space-y-1.5">
-                    <div className="flex items-center text-xs text-gray-500">
-                      <MapPin className="w-3.5 h-3.5 mr-1.5 shrink-0" />
-                      <span className="truncate">{card.address}</span>
-                    </div>
-                    <div className="flex items-center text-xs text-gray-500">
-                      <Calendar className="w-3.5 h-3.5 mr-1.5 shrink-0" />
-                      <span>{card.time}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+    <div className="flex flex-col gap-4">
+      {/* KPIs */}
+      <div className="grid grid-cols-4 gap-4">
+        {KPIS.map((k) => (
+          <div key={k.label} className="bg-white rounded-lg px-4 py-3.5"
+            style={{ border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", borderTop: `2px solid ${k.accent}` }}>
+            <p className="text-xs font-semibold uppercase mb-1" style={{ color: "#6b7a90", letterSpacing: "0.6px" }}>{k.label}</p>
+            <p className="text-2xl font-bold tracking-tight mb-0.5" style={{ color: "#1a2333" }}>{k.value}</p>
+            <p className="text-xs" style={{ color: "#6b7a90" }}>{k.sub}</p>
           </div>
         ))}
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-lg overflow-hidden"
+        style={{ border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+        <div className="px-5 py-3.5 flex items-center justify-between" style={{ borderBottom: "1px solid #f0f0f0" }}>
+          <p className="text-sm font-bold" style={{ color: "#1a2333" }}>Today's Jobs — May 18, 2026</p>
+          <button className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md"
+            style={{ backgroundColor: "#eff6ff", color: "#2b4fac", border: "1px solid #bfdbfe" }}
+            data-testid="button-sync-housecall">
+            <RefreshCw className="w-3 h-3" />Sync HouseCall Pro
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr style={{ borderBottom: "1px solid #f0f0f0", backgroundColor: "#fafafa" }}>
+                {["Time", "Customer", "Services", "Technician", "Location", "Value", "Status"].map((h) => (
+                  <th key={h} className="px-5 py-3 text-left text-xs font-semibold uppercase"
+                    style={{ color: "#6b7a90", letterSpacing: "0.5px" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {JOBS.map((j, idx) => {
+                const sc = STATUS_CONFIG[j.status];
+                const Icon = sc.icon;
+                const techColor = TECH_COLORS[j.tech] ?? "#6b7a90";
+                return (
+                  <tr key={idx} style={{ borderBottom: "1px solid #f5f5f5" }}>
+                    <td className="px-5 py-3.5 text-sm font-semibold tabular-nums" style={{ color: "#1a2333" }}>{j.time}</td>
+                    <td className="px-5 py-3.5">
+                      <span className="text-sm font-semibold" style={{ color: "#1a2333" }}>{j.customer}</span>
+                    </td>
+                    <td className="px-5 py-3.5 text-xs" style={{ color: "#6b7a90" }}>{j.services}</td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold"
+                          style={{ backgroundColor: techColor }}>{j.tech[0]}</div>
+                        <span className="text-sm" style={{ color: "#1a2333" }}>{j.tech}</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5 text-xs" style={{ color: "#6b7a90" }}>{j.location}</td>
+                    <td className="px-5 py-3.5 text-sm font-bold" style={{ color: "#1a2333" }}>{j.value}</td>
+                    <td className="px-5 py-3.5">
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full"
+                        style={{ backgroundColor: sc.bg, color: sc.text, border: `1px solid ${sc.border}` }}>
+                        <Icon className="w-3 h-3" />{j.status}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="px-5 py-3 flex items-center justify-between" style={{ borderTop: "1px solid #f0f0f0" }}>
+          <p className="text-xs" style={{ color: "#6b7a90" }}>7 jobs · Total value: $2,145</p>
+          <p className="text-xs" style={{ color: "#3db54a" }}>Last synced: 2 minutes ago</p>
+        </div>
       </div>
     </div>
   );

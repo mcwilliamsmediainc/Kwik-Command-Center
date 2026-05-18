@@ -1,0 +1,122 @@
+Build the Scout marketing intelligence page. Here's what 
+it needs:
+
+TOP: 4 KPI cards:
+- Google Rating: 5.0★ (506 reviews, ↑3 this week, yellow accent)
+- Ad Spend MTD: $450 (Google Ads, $12.40/lead, blue accent)
+- Email Open Rate: 34% (312 sent, 3 replies in pipeline, green accent)
+- Review Requests: 3 today (47% conversion rate, orange accent)
+
+MAIN LAYOUT: Two columns
+
+LEFT — Lead Source Breakdown:
+Title: "Lead Sources — May" with "HouseCall Pro" link
+Show 5 animated progress bars:
+- Google Search: 42%, 20 jobs, blue #2b4fac bar
+- Repeat Customer: 28%, 13 jobs, green #3db54a bar
+- Referral: 16%, 8 jobs, orange bar
+- Facebook: 8%, 4 jobs, blue bar
+- Other: 6%, 2 jobs, gray bar
+
+Each bar shows label left, "X jobs · X%" right, 
+5px height, rounded, animates in on page load
+
+RIGHT — Platform Health:
+Show 6 platforms with mini progress bars and status badges:
+- Google: 100% blue bar — "506 reviews"
+- Birdeye: 95% green bar — "5.0 ★"
+- Yelp: 20% red bar — "Needs Fix" orange pill
+- BBB: 55% yellow bar — "Not Accredited" yellow pill
+- Facebook: 45% blue bar — "Active"
+- Instagram: 30% pink bar — "Active"
+
+BELOW MAIN: Recent Reviews full width card
+Title: "Recent Reviews — Needs Response" 
+Subtitle link: "View all 506 →"
+3 review cards in a grid:
+
+Card 1: ★★★★★ yellow stars
+"Best carpet cleaning in Tulsa. Peyton was on time 
+and my carpets dried in under an hour."
+Michael T. · Google · 2 hours ago
+"Respond →" button
+
+Card 2: ★★★★★ yellow stars  
+"Evan did an amazing job on our air ducts. You could 
+really feel the difference right away."
+Jennifer R. · Google · Yesterday
+"Respond →" button
+
+Card 3: ★★★★★ yellow stars
+"Anthony cleaned our sectional and it looks brand new. 
+No harsh smell, dried so fast. No hidden fees."
+David K. · Google · 2 days ago
+"Respond →" button
+
+After Scout is done, immediately build these 
+remaining pages:
+
+UNIFIED INBOX page at /inbox:
+- 4 KPI cards: Avg Response 0:43, Messages Today 47, 
+  Pending Approval 3, Leads under 1 min 94%
+- Two column layout: thread list left (300px), 
+  conversation right
+- Same 5 threads as Dispatch page
+- Same approval zone with Send/Edit/Take Over buttons
+- "Ryder Draft" button calls /api/chat
+
+ASK page at /intelligence/ask:
+- Full width chat interface
+- 4 clickable quick-action cards above chat:
+  Monthly check-in, Focus this week, Follow-ups, 
+  Health report
+- 5 quick reply chips in purple style
+- Chat connected to /api/chat with orchestrator 
+  system prompt that has full business context
+- Opening message: "I have full visibility across 
+  your business — Ryder's interactions, Finn's 
+  financial data, Dispatch activity, Scout signals, 
+  and your job pipeline. Ask me anything."
+
+CUSTOMERS page at /intelligence/customers:
+- 4 KPI cards: Total Customers 247, Avg LTV $342, 
+  Dormant 12mo+ 31, Open Quotes 6
+- Searchable customer table with columns:
+  Customer, Phone, Last Job, Jobs, LTV, 
+  Preferred Tech, Status, Action
+- 5 sample customers with varied statuses:
+  Active (green), Dormant 4mo (yellow), 
+  Dormant 6mo (orange), Quote Open (blue), 
+  Dormant 3yr (red)
+
+REACTIVATION page at /intelligence/reactivation:
+- 4 KPI cards: Est. Recoverable $4,340, 
+  Dormant Customers 31, Open Quotes 6, 
+  Active Sequences 3
+- Two column layout:
+  Left: Open Quotes with Draft/Mark Lost buttons
+  Right: Win-Back Queue with Draft button
+- AI chat below connected to /api/chat for 
+  drafting personalized messages
+
+JOB PIPELINE page at /operations/jobs:
+- 4 KPI cards: Scheduled Today 5, In Progress 2, 
+  Completed Today 3, Pending Confirm 3
+- Full width job table with columns:
+  Time, Customer, Services, Technician, 
+  Location, Value, Status
+- 7 sample jobs with mix of Complete/In Progress/
+  Scheduled status pills
+- "Sync HouseCall Pro" button
+
+TEAM AND PAY page at /operations/team:
+- 3 technician cards side by side
+- Each card: avatar initial (P/A/E), name, 
+  1099 Contractor label, Active pill
+- Stats: Jobs This Month, Revenue Generated, 
+  Contractor Pay, Avg Rating
+- Peyton: 18 jobs, $3,240 revenue, $720 pay, ★5.0
+- Anthony: 15 jobs, $2,740 revenue, $600 pay, ★5.0  
+- Evan: 13 jobs, $2,260 revenue, $520 pay, ★5.0
+- "View Jobs →" button on each card
+- "+ Add Technician" button in header
