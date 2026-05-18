@@ -59,21 +59,36 @@ export function Sidebar() {
 
       {/* Logo */}
       <div
-        className="flex flex-col items-center flex-shrink-0 py-3"
+        className="flex flex-col items-center flex-shrink-0 py-4"
         style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
       >
-        <img
-          src="/kwikdry-logo.png"
-          alt="Kwik Dry"
-          style={{ maxWidth: 160, height: "auto", display: "block", margin: "0 auto" }}
-        />
+        <div
+          style={{
+            background: "white",
+            borderRadius: 8,
+            padding: "8px 12px",
+            display: "inline-block",
+          }}
+        >
+          <img
+            src="/kwikdry-logo.png"
+            alt="Kwik Dry"
+            style={{ maxWidth: 136, height: "auto", display: "block" }}
+          />
+        </div>
         <span
           style={{
-            color: "rgba(255,255,255,0.35)",
-            fontSize: 9,
-            textTransform: "uppercase",
+            fontSize: 10,
+            fontWeight: 600,
             letterSpacing: "1.5px",
             marginTop: 6,
+            paddingTop: 8,
+            borderTop: "1px solid rgba(255,255,255,0.08)",
+            width: "80%",
+            textAlign: "center",
+            background: "linear-gradient(90deg, #4f7df7, #3db54a)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
           }}
         >
           Command Center
