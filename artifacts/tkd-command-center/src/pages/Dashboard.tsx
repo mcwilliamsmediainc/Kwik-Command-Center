@@ -29,6 +29,7 @@ const SCOUT_ALERTS = [
     color: "#f97316",
     bg: "#fff7ed",
     border: "#fed7aa",
+    leftBorder: "#ea6c1a",
     icon: AlertTriangle,
     title: "BBB Accreditation Gap",
     body: "A- rating but not accredited — competitors are using this against you.",
@@ -37,6 +38,7 @@ const SCOUT_ALERTS = [
     color: "#2b4fac",
     bg: "#eff4ff",
     border: "#bfcfff",
+    leftBorder: "#2b4fac",
     icon: MessageSquare,
     title: "New Review Needs Response",
     body: "Peyton got a 5-star review from Michael T. — respond to keep momentum.",
@@ -45,6 +47,7 @@ const SCOUT_ALERTS = [
     color: "#d97706",
     bg: "#fffbeb",
     border: "#fde68a",
+    leftBorder: "#d97706",
     icon: Copy,
     title: "Duplicate Yelp Listings",
     body: "Two listings detected — splitting your review count and hurting rankings.",
@@ -53,6 +56,7 @@ const SCOUT_ALERTS = [
     color: "#3db54a",
     bg: "#f0fdf4",
     border: "#bbf7d0",
+    leftBorder: "#3db54a",
     icon: TrendingDown,
     title: "Slow Period Predicted June 2",
     body: "Historical patterns suggest a dip — launch a win-back campaign now.",
@@ -126,6 +130,7 @@ export function Dashboard() {
                 style={{
                   backgroundColor: alert.bg,
                   border: `1px solid ${alert.border}`,
+                  borderLeft: `3px solid ${alert.leftBorder}`,
                   boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
                 }}
                 data-testid={`scout-alert-${alert.title.toLowerCase().replace(/\s+/g, "-")}`}

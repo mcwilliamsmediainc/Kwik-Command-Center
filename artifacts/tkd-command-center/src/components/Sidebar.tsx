@@ -69,13 +69,13 @@ export function Sidebar() {
         <img
           src="/kwikdry-logo.png"
           alt="Kwik Dry"
-          style={{ maxWidth: 160, height: "auto", display: "block", margin: "0 auto" }}
+          style={{ maxWidth: 160, height: "auto", display: "block", margin: "0 auto", filter: "brightness(1.1) contrast(1.05)" }}
         />
         <span
           style={{
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: 600,
-            letterSpacing: "1.5px",
+            letterSpacing: "2px",
             marginTop: 6,
             paddingTop: 8,
             borderTop: "1px solid rgba(255,255,255,0.08)",
@@ -127,7 +127,7 @@ export function Sidebar() {
                             <span
                               style={{
                                 fontSize: 9,
-                                color: "rgba(255,255,255,0.35)",
+                                color: "rgba(255,255,255,0.40)",
                                 display: "block",
                                 marginTop: 1,
                                 lineHeight: 1,
