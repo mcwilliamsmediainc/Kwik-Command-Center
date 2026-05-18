@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Tulsa Kwik Dry Command Center"
+version = "1.0.0"
+id = "artifacts/tkd-command-center"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24746
+
+[services.development]
+run = "pnpm --filter @workspace/tkd-command-center run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/tkd-command-center", "run", "build" ]
+publicDir = "artifacts/tkd-command-center/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24746"
+BASE_PATH = "/"
