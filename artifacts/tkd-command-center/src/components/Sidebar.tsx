@@ -53,19 +53,16 @@ export function Sidebar() {
   const [location] = useLocation();
 
   return (
-    <div
-      className="w-[240px] flex-shrink-0 h-screen sticky top-0 flex flex-col overflow-hidden"
-      style={{ backgroundColor: "#1e2a3a", borderRight: "1px solid rgba(255,255,255,0.06)" }}
-    >
+    <div className="tkd-sidebar w-[240px] flex-shrink-0 h-screen sticky top-0 flex flex-col overflow-hidden">
+      {/* Gradient accent bar */}
+      <div className="tkd-sidebar-accent" />
+
       {/* Logo */}
       <div
         className="flex items-center gap-2.5 px-4 h-14 flex-shrink-0"
         style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
       >
-        <span
-          className="font-bold text-white text-xs px-2 py-1 rounded tracking-wider flex-shrink-0"
-          style={{ backgroundColor: "#2b4fac" }}
-        >
+        <span className="tkd-badge font-bold text-xs px-2 py-1 rounded tracking-wider flex-shrink-0">
           TKD
         </span>
         <span className="text-white text-sm font-semibold tracking-tight">Command Center</span>
@@ -75,13 +72,7 @@ export function Sidebar() {
       <div className="flex-1 overflow-y-auto py-4 space-y-5 px-3">
         {NAV_SECTIONS.map((section) => (
           <div key={section.title}>
-            {/* Section label */}
-            <p
-              className="px-2 mb-1.5 font-semibold uppercase tracking-[1.2px]"
-              style={{ fontSize: "9px", color: "rgba(255,255,255,0.35)" }}
-            >
-              {section.title}
-            </p>
+            <p className="tkd-section-label px-2 mb-1.5">{section.title}</p>
 
             <ul className="space-y-0.5">
               {section.items.map((item) => {
@@ -92,21 +83,11 @@ export function Sidebar() {
                   <li key={item.name}>
                     <Link href={item.href}>
                       <span
-                        className="relative flex items-center gap-3 w-full px-2 py-[7px] rounded-md text-sm cursor-pointer transition-colors group"
-                        style={{
-                          color: isActive ? "#ffffff" : "rgba(255,255,255,0.65)",
-                          backgroundColor: isActive ? "rgba(255,255,255,0.12)" : "transparent",
-                        }}
+                        className={`relative flex items-center gap-3 w-full px-2 py-[7px] rounded-md text-sm cursor-pointer transition-colors group ${
+                          isActive ? "tkd-nav-active" : "tkd-nav-inactive"
+                        }`}
                         data-testid={`nav-${item.name.toLowerCase().replace(/\s+/g, "-")}`}
                       >
-                        {/* Green left border — active only */}
-                        {isActive && (
-                          <span
-                            className="absolute left-0 inset-y-0 rounded-r-sm"
-                            style={{ width: "3px", backgroundColor: "#3db54a" }}
-                          />
-                        )}
-
                         {/* Hover overlay — inactive only */}
                         {!isActive && (
                           <span
@@ -116,10 +97,7 @@ export function Sidebar() {
                         )}
 
                         <Icon className="w-4 h-4 flex-shrink-0 relative z-10" />
-                        <span
-                          className="relative z-10 group-hover:text-white transition-colors leading-none"
-                          style={{ color: isActive ? "#fff" : undefined }}
-                        >
+                        <span className="relative z-10 group-hover:text-white transition-colors leading-none">
                           {item.name}
                         </span>
                       </span>
