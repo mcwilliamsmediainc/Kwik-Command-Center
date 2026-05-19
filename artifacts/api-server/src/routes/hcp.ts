@@ -53,7 +53,9 @@ router.get("/hcp/jobs", async (req, res) => {
     if (data.jobs.length > 0) {
       req.log.info({ rawJobSample: data.jobs[0] }, "hcp raw job fields (first result)");
     }
-    const normalized = data.jobs.map(normalizeJob);
+    const normalized = data.jobs
+      .map(normalizeJob)
+      .filter((j) => j.customer && j.customer !== "Unknown" && j.customer.toLowerCase() !== "no customer");
     res.json({
       jobs: normalized,
       total_items: data.total_items,
