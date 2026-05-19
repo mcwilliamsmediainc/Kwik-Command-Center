@@ -21,7 +21,7 @@ export function Layout({ children }: LayoutProps) {
      * This means scrolling happens inside <main>, not at the body level —
      * which prevents the body overflow:hidden lock from also blocking page scroll.
      */
-    <div className="flex h-screen overflow-hidden bg-[#f0f2f5] font-sans">
+    <div className="flex h-full overflow-hidden bg-[#f0f2f5] font-sans">
 
       {/* Dark overlay — only rendered when sidebar is open, so it cannot
           intercept touch/scroll events when the sidebar is closed */}
