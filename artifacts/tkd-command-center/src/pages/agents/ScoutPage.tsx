@@ -196,22 +196,22 @@ export function ScoutPage() {
     <div className="flex flex-col gap-4">
 
       {/* ── KPI row ── */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
         {kpis.map((k) => (
           <div
             key={k.label}
-            className="bg-white rounded-lg px-4 py-3.5"
+            className="bg-white rounded-lg px-3 py-3 md:px-4 md:py-3.5"
             style={{ border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", borderTop: `2px solid ${k.accent}` }}
           >
-            <p className="text-xs font-semibold uppercase mb-1.5" style={{ color: "#6b7a90", letterSpacing: "0.6px" }}>
+            <p className="text-[9px] md:text-xs font-semibold uppercase mb-1.5" style={{ color: "#6b7a90", letterSpacing: "0.6px" }}>
               {k.label}
             </p>
             <p className="text-2xl font-bold tracking-tight mb-1" style={{ color: "#1a2333" }}>
               {k.value}
             </p>
-            <p className="text-xs" style={{ color: "#64748b" }}>{k.sub1}</p>
+            <p className="text-[10px] md:text-xs" style={{ color: "#64748b" }}>{k.sub1}</p>
             {k.sub2 && (
-              <p className="text-xs font-semibold mt-0.5" style={{ color: k.sub2Color }}>
+              <p className="text-[10px] md:text-xs font-semibold mt-0.5" style={{ color: k.sub2Color }}>
                 {k.sub2}
               </p>
             )}

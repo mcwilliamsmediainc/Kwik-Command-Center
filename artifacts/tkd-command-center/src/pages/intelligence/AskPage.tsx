@@ -113,21 +113,21 @@ export function AskPage() {
     <div className="flex flex-col gap-4 h-[calc(100vh-108px)]">
 
       {/* Quick action cards */}
-      <div className="grid grid-cols-4 gap-4 flex-shrink-0">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 flex-shrink-0">
         {ACTION_CARDS.map((c) => {
           const Icon = c.icon;
           return (
             <button key={c.label} onClick={() => send(c.label)}
-              className="bg-white rounded-lg px-4 py-3.5 text-left transition-shadow hover:shadow-md"
+              className="bg-white rounded-lg px-3 py-3 md:px-4 md:py-3.5 text-left transition-shadow hover:shadow-md"
               style={{ border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", borderTop: `2px solid ${c.color}` }}
               data-testid={`action-card-${c.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>
               <div className="flex items-start justify-between mb-2">
-                <p className="text-sm font-bold leading-snug pr-2" style={{ color: "#1a2333" }}>{c.label}</p>
+                <p className="text-xs md:text-sm font-bold leading-snug pr-2" style={{ color: "#1a2333" }}>{c.label}</p>
                 <div className="p-1.5 rounded-md flex-shrink-0" style={{ backgroundColor: c.bg }}>
                   <Icon className="w-3.5 h-3.5" style={{ color: c.color }} />
                 </div>
               </div>
-              <p className="text-xs" style={{ color: "#6b7a90" }}>{c.desc}</p>
+              <p className="text-[10px] md:text-xs" style={{ color: "#6b7a90" }}>{c.desc}</p>
             </button>
           );
         })}
