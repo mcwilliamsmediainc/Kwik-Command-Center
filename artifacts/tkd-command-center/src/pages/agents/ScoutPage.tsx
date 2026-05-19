@@ -256,6 +256,11 @@ export function ScoutPage() {
                     </span>
                   </div>
                   <AnimatedBar pct={s.pct} color={sourceColor(i)} />
+                  {s.label === "Unknown" && s.pct >= 10 && (
+                    <p className="mt-1.5" style={{ fontSize: "11px", color: "#a16207" }}>
+                      ⚠ {s.pct}% of leads have no source tracked. Ask call center to record lead source on every booking.
+                    </p>
+                  )}
                 </div>
               ))
             )}
