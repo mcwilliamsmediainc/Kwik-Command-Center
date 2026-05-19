@@ -362,4 +362,137 @@ function normalizeStatus(s: string): "Complete" | "In Progress" | "Scheduled" | 
   }
 }
 
+/* ── Invoice types ─────────────────────────────────────────── */
+interface HcpInvoice {
+  id: string;
+  status: string;
+  amount?: number;
+  due_amount?: number;
+  invoice_date?: string | null;
+  job_id?: string;
+}
+
+interface HcpInvoicePage {
+  invoices: HcpInvoice[];
+  total_items: number;
+  total_pages?: number;
+}
+
+/* ── /hcp/financials ───────────────────────────────────────── */
+router.get("/hcp/financials", async (req, res) => {
+  try {
+    const CACHE_KEY = "hcp:financials";
+    const cached = getCached(CACHE_KEY);
+    if (cached) { res.json(cached); return; }
+
+    const now = new Date();
+    const monthStart  = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const monthEnd    = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+    const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+    const jobParams = (page: string) => ({
+      page, page_size: "100",
+      scheduled_start_min: monthStart,
+      scheduled_start_max: monthEnd,
+    });
+    const invParams = (page: string) => ({
+      page, page_size: "100",
+      created_start: monthStart,
+      created_end: monthEnd,
+    });
+
+    const [j1, j2, j3, inv1, inv2] = await Promise.all([
+      hcpGet("/jobs",     jobParams("1")) as Promise<HcpJobPage>,
+      hcpGet("/jobs",     jobParams("2")) as Promise<HcpJobPage>,
+      hcpGet("/jobs",     jobParams("3")) as Promise<HcpJobPage>,
+      hcpGet("/invoices", invParams("1")) as Promise<HcpInvoicePage>,
+      hcpGet("/invoices", invParams("2")) as Promise<HcpInvoicePage>,
+    ]);
+
+    const allJobs     = [...j1.jobs, ...j2.jobs, ...j3.jobs];
+    const allInvoices = [...(inv1.invoices ?? []), ...(inv2.invoices ?? [])]
+      .filter(i => i.invoice_date?.startsWith(monthPrefix));
+
+    /* ── Revenue by service category ── */
+    function categorize(desc: string): string {
+      const d = (desc || "").toLowerCase();
+      if (d.includes("carpet") || d.includes(" rug") || d.includes("area rug") || d.includes("runner")) return "Carpet Cleaning";
+      if (d.includes("sofa") || d.includes("sectional") || d.includes("upholstery") || d.includes("couch") || d.includes("loveseat") || d.includes("ottoman")) return "Upholstery";
+      if (d.includes("tile") || d.includes("grout") || d.includes("shower tile")) return "Tile & Grout";
+      if (d.includes("wood") || d.includes("hardwood") || d.includes("hard wood") || d.includes("floor sealing")) return "Wood Floors";
+      if (d.includes("air duct") || d.includes("duct cleaning")) return "Air Duct";
+      return "Other Services";
+    }
+
+    const categoryMap: Record<string, number> = {};
+    const techMap: Record<string, { color: string; jobs: number; revenue: number }> = {};
+    let totalRevenue = 0;
+
+    for (const job of allJobs) {
+      const amount = resolveAmount(job) ?? 0;
+      totalRevenue += amount;
+
+      const cat = categorize(job.description ?? "");
+      categoryMap[cat] = (categoryMap[cat] ?? 0) + amount;
+
+      if (job.assigned_employees?.length) {
+        const emp  = job.assigned_employees[0];
+        const name = `${emp.first_name} ${emp.last_name}`.trim();
+        if (!techMap[name]) {
+          techMap[name] = { color: `#${emp.color_hex ?? "2b4fac"}`, jobs: 0, revenue: 0 };
+        }
+        techMap[name].jobs++;
+        techMap[name].revenue += amount;
+      }
+    }
+
+    /* ── Invoice totals (already filtered to current month) ── */
+    let paidTotal = 0, outstandingTotal = 0, paidCount = 0;
+    for (const inv of allInvoices) {
+      if (inv.status === "paid")       { paidTotal       += (inv.amount    ?? 0) / 100; paidCount++; }
+      if (inv.status === "open" || inv.status === "outstanding") {
+        outstandingTotal += (inv.due_amount ?? 0) / 100;
+      }
+    }
+
+    const PAY_RATE = 40; // $40 flat per job
+    const techs = Object.entries(techMap)
+      .map(([name, t]) => ({
+        name,
+        color:   t.color,
+        jobs:    t.jobs,
+        revenue: Math.round(t.revenue * 100) / 100,
+        pay:     t.jobs * PAY_RATE,
+      }))
+      .sort((a, b) => b.jobs - a.jobs);
+
+    const payrollTotal = techs.reduce((s, t) => s + t.pay, 0);
+
+    const revenueByCategory = Object.entries(categoryMap)
+      .map(([label, amount]) => ({ label, amount: Math.round(amount * 100) / 100 }))
+      .sort((a, b) => b.amount - a.amount);
+
+    const payload = {
+      month:              now.toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+      totalRevenue:       Math.round(totalRevenue * 100) / 100,
+      jobCount:           allJobs.length,
+      totalJobItems:      j1.total_items,
+      paidTotal:          Math.round(paidTotal * 100) / 100,
+      paidCount,
+      outstandingTotal:   Math.round(outstandingTotal * 100) / 100,
+      avgJobValue:        allJobs.length ? Math.round((totalRevenue / allJobs.length) * 100) / 100 : 0,
+      revenueByCategory,
+      techs,
+      payrollTotal,
+      syncedAt:           new Date().toISOString(),
+    };
+
+    setCached(CACHE_KEY, payload, 3 * 60 * 1000);
+    res.json(payload);
+  } catch (err) {
+    req.log.error({ err }, "hcp /financials failed");
+    res.status(502).json({ error: String(err instanceof Error ? err.message : err) });
+  }
+});
+
 export default router;
