@@ -369,6 +369,7 @@ interface HcpInvoice {
   amount?: number;
   due_amount?: number;
   invoice_date?: string | null;
+  invoice_number?: string | null;
   job_id?: string;
 }
 
@@ -446,14 +447,35 @@ router.get("/hcp/financials", async (req, res) => {
       }
     }
 
+    /* ── Build job_id → customer name lookup ── */
+    const jobCustomerMap = new Map<string, string>();
+    for (const job of allJobs) {
+      const name = [job.customer?.first_name, job.customer?.last_name].filter(Boolean).join(" ") || "Unknown";
+      jobCustomerMap.set(job.id, name);
+    }
+
     /* ── Invoice totals (already filtered to current month) ── */
     let paidTotal = 0, outstandingTotal = 0, paidCount = 0;
+    const outstandingInvoices: { id: string; invoiceNumber: string; customerName: string; amount: number; invoiceDate: string }[] = [];
+
     for (const inv of allInvoices) {
-      if (inv.status === "paid")       { paidTotal       += (inv.amount    ?? 0) / 100; paidCount++; }
+      if (inv.status === "paid") {
+        paidTotal += (inv.amount ?? 0) / 100;
+        paidCount++;
+      }
       if (inv.status === "open" || inv.status === "outstanding") {
-        outstandingTotal += (inv.due_amount ?? 0) / 100;
+        const amt = (inv.due_amount ?? inv.amount ?? 0) / 100;
+        outstandingTotal += amt;
+        outstandingInvoices.push({
+          id:            inv.id,
+          invoiceNumber: inv.invoice_number ?? "",
+          customerName:  inv.job_id ? (jobCustomerMap.get(inv.job_id) ?? "Unknown") : "Unknown",
+          amount:        Math.round(amt * 100) / 100,
+          invoiceDate:   inv.invoice_date ?? "",
+        });
       }
     }
+    outstandingInvoices.sort((a, b) => b.amount - a.amount);
 
     const PAY_RATE = 40; // $40 flat per job
     const techs = Object.entries(techMap)
@@ -473,18 +495,19 @@ router.get("/hcp/financials", async (req, res) => {
       .sort((a, b) => b.amount - a.amount);
 
     const payload = {
-      month:              now.toLocaleDateString("en-US", { month: "long", year: "numeric" }),
-      totalRevenue:       Math.round(totalRevenue * 100) / 100,
-      jobCount:           allJobs.length,
-      totalJobItems:      j1.total_items,
-      paidTotal:          Math.round(paidTotal * 100) / 100,
+      month:               now.toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+      totalRevenue:        Math.round(totalRevenue * 100) / 100,
+      jobCount:            allJobs.length,
+      totalJobItems:       j1.total_items,
+      paidTotal:           Math.round(paidTotal * 100) / 100,
       paidCount,
-      outstandingTotal:   Math.round(outstandingTotal * 100) / 100,
-      avgJobValue:        allJobs.length ? Math.round((totalRevenue / allJobs.length) * 100) / 100 : 0,
+      outstandingTotal:    Math.round(outstandingTotal * 100) / 100,
+      outstandingInvoices,
+      avgJobValue:         allJobs.length ? Math.round((totalRevenue / allJobs.length) * 100) / 100 : 0,
       revenueByCategory,
       techs,
       payrollTotal,
-      syncedAt:           new Date().toISOString(),
+      syncedAt:            new Date().toISOString(),
     };
 
     setCached(CACHE_KEY, payload, 3 * 60 * 1000);

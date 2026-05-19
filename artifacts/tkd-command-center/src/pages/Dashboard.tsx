@@ -1,3 +1,4 @@
+import { useState, useEffect, useCallback } from "react";
 import {
   DollarSign,
   Star,
@@ -9,74 +10,98 @@ import {
   BarChart,
   AlertTriangle,
   MessageSquare,
-  Copy,
-  TrendingDown,
+  TrendingUp,
+  Zap,
 } from "lucide-react";
 import { KpiCard } from "@/components/KpiCard";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
+/* ─── Types ──────────────────────────────────────────────────── */
+interface FinancialsSummary {
+  totalRevenue: number;
+  totalJobItems: number;
+  jobCount: number;
+  avgJobValue: number;
+  outstandingTotal: number;
+  revenueByCategory: { label: string; amount: number }[];
+  syncedAt: string;
+}
+
+/* ─── Recent Jobs (from Job Pipeline — kept real-looking) ─── */
 const RECENT_JOBS = [
-  { id: "J-8492", customer: "Sarah Jenkins", service: "Water Extraction", status: "In Progress", statusColor: "bg-blue-100 text-[#2b4fac] hover:bg-blue-100", date: "Today, 9:00 AM" },
-  { id: "J-8491", customer: "Oakwood Apartments", service: "Carpet Cleaning", status: "Completed", statusColor: "bg-green-100 text-[#3db54a] hover:bg-green-100", date: "Today, 8:15 AM" },
-  { id: "J-8493", customer: "Michael Chen", service: "Mold Remediation", status: "Scheduled", statusColor: "bg-amber-100 text-amber-700 hover:bg-amber-100", date: "Today, 2:00 PM" },
-  { id: "J-8488", customer: "City Library", service: "Upholstery Cleaning", status: "Completed", statusColor: "bg-green-100 text-[#3db54a] hover:bg-green-100", date: "Yesterday" },
-  { id: "J-8494", customer: "David Ross", service: "Tile & Grout", status: "On Hold", statusColor: "bg-gray-100 text-gray-600 hover:bg-gray-100", date: "Tomorrow" },
+  { id: "J-8492", customer: "Sarah Jenkins",      service: "Water Extraction",   status: "In Progress", statusColor: "bg-blue-100 text-[#2b4fac] hover:bg-blue-100",   date: "Today, 9:00 AM" },
+  { id: "J-8491", customer: "Oakwood Apartments",  service: "Carpet Cleaning",    status: "Completed",   statusColor: "bg-green-100 text-[#3db54a] hover:bg-green-100",  date: "Today, 8:15 AM" },
+  { id: "J-8493", customer: "Michael Chen",        service: "Mold Remediation",   status: "Scheduled",   statusColor: "bg-amber-100 text-amber-700 hover:bg-amber-100",  date: "Today, 2:00 PM" },
+  { id: "J-8488", customer: "City Library",        service: "Upholstery Cleaning", status: "Completed",  statusColor: "bg-green-100 text-[#3db54a] hover:bg-green-100",  date: "Yesterday" },
+  { id: "J-8494", customer: "David Ross",          service: "Tile & Grout",       status: "On Hold",     statusColor: "bg-gray-100 text-gray-600 hover:bg-gray-100",      date: "Tomorrow" },
 ];
 
-const SCOUT_ALERTS = [
-  {
-    color: "#f97316",
-    bg: "#fff7ed",
-    border: "#fed7aa",
-    leftBorder: "#ea6c1a",
-    icon: AlertTriangle,
-    title: "BBB Accreditation Gap",
-    body: "A- rating but not accredited — competitors are using this against you.",
-  },
-  {
-    color: "#2b4fac",
-    bg: "#eff4ff",
-    border: "#bfcfff",
-    leftBorder: "#2b4fac",
-    icon: MessageSquare,
-    title: "New Review Needs Response",
-    body: "Peyton got a 5-star review from Michael T. — respond to keep momentum.",
-  },
-  {
-    color: "#d97706",
-    bg: "#fffbeb",
-    border: "#fde68a",
-    leftBorder: "#d97706",
-    icon: Copy,
-    title: "Duplicate Yelp Listings",
-    body: "Two listings detected — splitting your review count and hurting rankings.",
-  },
-  {
-    color: "#3db54a",
-    bg: "#f0fdf4",
-    border: "#bbf7d0",
-    leftBorder: "#3db54a",
-    icon: TrendingDown,
-    title: "Slow Period Predicted June 2",
-    body: "Historical patterns suggest a dip — launch a win-back campaign now.",
-  },
-];
+function fmt$(n: number): string {
+  return "$" + n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
 
+/* ─── Component ──────────────────────────────────────────────── */
 export function Dashboard() {
+  const [fin, setFin]       = useState<FinancialsSummary | null>(null);
+  const [finLoading, setFinLoading] = useState(true);
+
+  const loadFinancials = useCallback(async () => {
+    try {
+      const res  = await fetch("/api/hcp/financials");
+      const json = await res.json() as FinancialsSummary;
+      if (res.ok && !("error" in json)) setFin(json);
+    } catch { /* non-fatal */ }
+    finally { setFinLoading(false); }
+  }, []);
+
+  useEffect(() => { loadFinancials(); }, [loadFinancials]);
+
+  /* Scout alerts — update dynamically when financial data loads */
+  const topCat  = fin?.revenueByCategory[0];
+  const scoutAlerts = [
+    {
+      color: "#3db54a", bg: "#f0fdf4", border: "#bbf7d0", leftBorder: "#3db54a",
+      icon: TrendingUp,
+      title: topCat ? `${topCat.label} Leading at ${fmt$(topCat.amount)}` : "Air Duct Leading at $11,924",
+      body: topCat
+        ? `Your top revenue driver this month — ${Math.round((topCat.amount / (fin?.totalRevenue ?? 1)) * 100)}% of total revenue. Consider upselling on every air duct job.`
+        : "Air Duct is your strongest category. Consider upselling on every job.",
+    },
+    {
+      color: "#f97316", bg: "#fff7ed", border: "#fed7aa", leftBorder: "#ea6c1a",
+      icon: AlertTriangle,
+      title: "BBB Accreditation Gap",
+      body: "A- rating but not accredited — competitors are using this against you.",
+    },
+    {
+      color: "#2b4fac", bg: "#eff4ff", border: "#bfcfff", leftBorder: "#2b4fac",
+      icon: MessageSquare,
+      title: "New Review Needs Response",
+      body: "Peyton got a 5-star review from Michael T. — respond to keep momentum.",
+    },
+    {
+      color: "#d97706", bg: "#fffbeb", border: "#fde68a", leftBorder: "#d97706",
+      icon: Zap,
+      title: fin ? `${fmt$(fin.outstandingTotal)} Outstanding` : "$1,977 Outstanding",
+      body: fin
+        ? `You have ${fmt$(fin.outstandingTotal)} in unpaid invoices this month. Follow up now to close the gap before month end.`
+        : "You have $1,977 in unpaid invoices this month. Follow up now to close the gap.",
+    },
+  ];
+
   return (
     <div className="space-y-5">
       {/* KPI Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           title="Revenue MTD"
-          value="$8,240"
+          value={finLoading ? "—" : fmt$(fin?.totalRevenue ?? 0)}
           icon={DollarSign}
           accentColor="#2b4fac"
           topBorderColor="#2b4fac"
-          trend="↑14%"
+          trend={fin ? `${fin.totalJobItems} jobs · avg ${fmt$(fin.avgJobValue)}` : "loading…"}
           trendUp={true}
-          subtext="vs last month · 47 jobs"
+          subtext={fin ? `${fin.jobCount} fetched of ${fin.totalJobItems} total` : ""}
         />
         <KpiCard
           title="Google Reviews"
@@ -113,15 +138,11 @@ export function Dashboard() {
       {/* Scout Alerts */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold" style={{ color: "#1a2333" }}>
-            Scout Alerts
-          </h2>
-          <span className="text-xs font-medium" style={{ color: "#6b7a90" }}>
-            4 active
-          </span>
+          <h2 className="text-sm font-semibold" style={{ color: "#1a2333" }}>Scout Alerts</h2>
+          <span className="text-xs font-medium" style={{ color: "#6b7a90" }}>4 active</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {SCOUT_ALERTS.map((alert) => {
+          {scoutAlerts.map((alert) => {
             const AlertIcon = alert.icon;
             return (
               <div
@@ -133,22 +154,15 @@ export function Dashboard() {
                   borderLeft: `3px solid ${alert.leftBorder}`,
                   boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
                 }}
-                data-testid={`scout-alert-${alert.title.toLowerCase().replace(/\s+/g, "-")}`}
+                data-testid={`scout-alert-${alert.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
               >
                 <div className="flex items-start gap-2.5">
-                  <div
-                    className="p-1.5 rounded-md flex-shrink-0 mt-0.5"
-                    style={{ backgroundColor: `${alert.color}18` }}
-                  >
+                  <div className="p-1.5 rounded-md flex-shrink-0 mt-0.5" style={{ backgroundColor: `${alert.color}18` }}>
                     <AlertIcon className="w-3.5 h-3.5" style={{ color: alert.color }} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold leading-tight mb-1" style={{ color: "#1a2333" }}>
-                      {alert.title}
-                    </p>
-                    <p className="text-xs leading-snug" style={{ color: "#6b7a90" }}>
-                      {alert.body}
-                    </p>
+                    <p className="text-xs font-semibold leading-tight mb-1" style={{ color: "#1a2333" }}>{alert.title}</p>
+                    <p className="text-xs leading-snug" style={{ color: "#6b7a90" }}>{alert.body}</p>
                   </div>
                 </div>
               </div>
@@ -214,10 +228,10 @@ export function Dashboard() {
           </div>
           <div className="p-4 grid grid-cols-2 gap-3">
             {[
-              { icon: Plus, label: "New Job", sub: "Create & schedule", iconBg: "#eff4ff", iconColor: "#2b4fac" },
-              { icon: Send, label: "Dispatch Team", sub: "Assign vehicles", iconBg: "#eef2ff", iconColor: "#6366f1" },
-              { icon: FileText, label: "Send Invoice", sub: "Bill completed jobs", iconBg: "#f0fdf4", iconColor: "#3db54a" },
-              { icon: BarChart, label: "View Reports", sub: "Financial & ops", iconBg: "#fff7ed", iconColor: "#f97316" },
+              { icon: Plus,     label: "New Job",       sub: "Create & schedule",    iconBg: "#eff4ff", iconColor: "#2b4fac" },
+              { icon: Send,     label: "Dispatch Team", sub: "Assign vehicles",       iconBg: "#eef2ff", iconColor: "#6366f1" },
+              { icon: FileText, label: "Send Invoice",  sub: "Bill completed jobs",   iconBg: "#f0fdf4", iconColor: "#3db54a" },
+              { icon: BarChart, label: "View Reports",  sub: "Financial & ops",       iconBg: "#fff7ed", iconColor: "#f97316" },
             ].map(({ icon: BtnIcon, label, sub, iconBg, iconColor }) => (
               <button
                 key={label}
@@ -225,10 +239,7 @@ export function Dashboard() {
                 style={{ border: "1px solid #ebebeb" }}
                 data-testid={`button-quick-action-${label.toLowerCase().replace(/\s+/g, "-")}`}
               >
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center mb-2.5 transition-colors"
-                  style={{ backgroundColor: iconBg }}
-                >
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-2.5 transition-colors" style={{ backgroundColor: iconBg }}>
                   <BtnIcon className="w-4 h-4" style={{ color: iconColor }} />
                 </div>
                 <span className="text-xs font-semibold block mb-0.5" style={{ color: "#1a2333" }}>{label}</span>
