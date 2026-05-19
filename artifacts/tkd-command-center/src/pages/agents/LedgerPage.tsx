@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, TrendingUp, TrendingDown, DollarSign, Clock, CreditCard, RefreshCw, X, FileText } from "lucide-react";
+import { Send, CreditCard, RefreshCw, X, FileText } from "lucide-react";
 
 /* ─── Types ──────────────────────────────────────────────────── */
 interface Msg { role: "user" | "assistant"; content: string; }
@@ -252,23 +252,23 @@ export function LedgerPage() {
   const kpis = [
     {
       label: "Monthly Revenue", value: dataLoading ? "—" : fmt$(revenue),
-      sub: data ? `${data.jobCount} of ${data.totalJobItems} jobs · avg ${fmt$(data.avgJobValue)}` : "loading…",
-      color: "#3db54a", icon: TrendingUp, positive: true as boolean | null, onClick: undefined as (() => void) | undefined,
+      sub: data ? `${data.jobCount} of ${data.totalJobItems} Jobs · Avg ${fmt$(data.avgJobValue)}` : "Loading…",
+      color: "#3db54a", positive: true as boolean | null, onClick: undefined as (() => void) | undefined,
     },
     {
       label: "Total Expenses", value: dataLoading ? "—" : fmt$(totalExp),
-      sub: `payroll ${fmt$(payroll)} + QB est. ${fmt$(QB_EXPENSES.total)}`,
-      color: "#ef4444", icon: TrendingDown, positive: false as boolean | null, onClick: undefined,
+      sub: `Payroll ${fmt$(payroll)} + QB Est. ${fmt$(QB_EXPENSES.total)}`,
+      color: "#ef4444", positive: false as boolean | null, onClick: undefined,
     },
     {
       label: "Net Profit", value: dataLoading ? "—" : fmt$(netProfit),
-      sub: dataLoading ? "loading…" : `${margin}% margin`,
-      color: "#2b4fac", icon: DollarSign, positive: true as boolean | null, onClick: undefined,
+      sub: dataLoading ? "Loading…" : `${margin}% Margin · ${data?.month ?? "May 2026"}`,
+      color: "#2b4fac", positive: true as boolean | null, onClick: undefined,
     },
     {
       label: "Outstanding", value: dataLoading ? "—" : fmt$(outstanding),
-      sub: dataLoading ? "loading…" : `${(data?.outstandingInvoices ?? []).length} unpaid invoices · click to view`,
-      color: "#d97706", icon: Clock, positive: null as boolean | null,
+      sub: dataLoading ? "Loading…" : `${(data?.outstandingInvoices ?? []).length} Unpaid Invoices · Click to View`,
+      color: "#d97706", positive: null as boolean | null,
       onClick: data && (data.outstandingInvoices ?? []).length > 0 ? () => setShowOutstanding(true) : undefined,
     },
   ];
@@ -319,33 +319,18 @@ export function LedgerPage() {
 
         {/* ── KPI row ── */}
         <div className="grid grid-cols-4 gap-4 flex-shrink-0">
-          {kpis.map((k) => {
-            const Icon = k.icon;
-            return (
-              <div
-                key={k.label}
-                className={`bg-white rounded-lg px-4 py-3.5 ${k.onClick ? "cursor-pointer transition-shadow hover:shadow-md" : ""}`}
-                style={{ border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", borderTop: `2px solid ${k.color}` }}
-                onClick={k.onClick}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <p className="text-xs font-medium uppercase" style={{ color: "#6b7a90", letterSpacing: "0.6px" }}>{k.label}</p>
-                      {k.onClick && (
-                        <span className="text-[9px] font-semibold px-1 py-0.5 rounded" style={{ backgroundColor: "#fff7ed", color: "#d97706" }}>TAP</span>
-                      )}
-                    </div>
-                    <p className="text-2xl font-bold tracking-tight mb-0.5" style={{ color: "#1a2333" }}>{k.value}</p>
-                    <p className="text-xs font-medium leading-tight" style={{ color: k.positive === true ? "#3db54a" : k.positive === false ? "#ef4444" : "#d97706" }}>{k.sub}</p>
-                  </div>
-                  <div className="p-2 rounded-lg flex-shrink-0 ml-2" style={{ backgroundColor: `${k.color}14` }}>
-                    <Icon className="w-4 h-4" style={{ color: k.color }} />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {kpis.map((k) => (
+            <div
+              key={k.label}
+              className={`bg-white rounded-lg px-4 py-3.5 ${k.onClick ? "cursor-pointer transition-shadow hover:shadow-md" : ""}`}
+              style={{ border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", borderTop: `2px solid ${k.color}` }}
+              onClick={k.onClick}
+            >
+              <p className="text-xs font-medium uppercase mb-1" style={{ color: "#6b7a90", letterSpacing: "0.6px" }}>{k.label}</p>
+              <p className="text-2xl font-bold tracking-tight mb-0.5" style={{ color: "#1a2333" }}>{k.value}</p>
+              <p className="text-xs font-medium leading-tight" style={{ color: k.positive === true ? "#3db54a" : k.positive === false ? "#ef4444" : "#d97706" }}>{k.sub}</p>
+            </div>
+          ))}
         </div>
 
         {/* ── Two-column layout ── */}
@@ -447,11 +432,10 @@ export function LedgerPage() {
 
             {/* P&L Summary */}
             <div className="bg-white rounded-lg overflow-hidden flex-shrink-0" style={{ border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-              <div className="px-4 py-3.5 flex items-center justify-between" style={{ borderBottom: "1px solid #f0f0f0" }}>
+              <div className="px-4 py-3.5" style={{ borderBottom: "1px solid #f0f0f0" }}>
                 <p className="text-xs font-semibold uppercase" style={{ color: "#6b7a90", letterSpacing: "0.6px" }}>
                   P&amp;L Summary · {data?.month ?? "May 2026"}
                 </p>
-                {data && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "#dcfce7", color: "#15803d" }}>HCP</span>}
               </div>
               <div className="px-4 py-3 space-y-1.5">
                 {dataLoading ? (
@@ -477,18 +461,12 @@ export function LedgerPage() {
               </div>
               <div className="px-4 pb-2 pt-1 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs flex items-center gap-1" style={{ color: "#6b7a90" }}>
-                    Tech Payroll
-                    <span className="text-[9px] px-1 py-0.5 rounded" style={{ backgroundColor: "#dcfce7", color: "#15803d" }}>HCP</span>
-                  </span>
+                  <span className="text-xs" style={{ color: "#6b7a90" }}>Tech Payroll</span>
                   <span className="text-xs font-semibold" style={{ color: "#ef4444" }}>{dataLoading ? "—" : `-${fmt$(payroll)}`}</span>
                 </div>
                 {QB_EXPENSES.rows.map(row => (
                   <div key={row.label} className="flex items-center justify-between">
-                    <span className="text-xs flex items-center gap-1" style={{ color: "#6b7a90" }}>
-                      {row.label}
-                      <span className="text-[9px] px-1 py-0.5 rounded" style={{ backgroundColor: "#fef9c3", color: "#92400e" }}>QB</span>
-                    </span>
+                    <span className="text-xs" style={{ color: "#6b7a90" }}>{row.label}</span>
                     <span className="text-xs font-semibold" style={{ color: "#ef4444" }}>-{fmt$(row.value)}</span>
                   </div>
                 ))}
