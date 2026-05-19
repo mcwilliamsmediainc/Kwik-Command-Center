@@ -35,12 +35,12 @@ ADD-ON FEES:
 
 SERVICE AREA: Tulsa, Broken Arrow, Bixby, Jenks, Owasso, Sand Springs, Claremore, Glenpool, Collinsville, Catoosa, Coweta, Sapulpa, Skiatook, Wagoner
 
-BOOKING: Call or text (918) 238-2986, or book online
+BOOKING: Call or text (918) 519-5362, or book online
 HOURS: Monday–Saturday, 7am–10pm
 DRY TIME: About 1 hour (not 24 hours like steam cleaning)
 METHOD: Low-moisture oxygenated citrus — completely safe for kids and pets
 
-Answer questions accurately using this pricing. Keep replies concise and conversational. Always close with a gentle nudge to book — something like "Give us a call at (918) 238-2986 or book online whenever you're ready!"`;
+Answer questions accurately using this pricing. Keep replies concise and conversational. Always close with a gentle nudge to book — something like "Give us a call at (918) 519-5362 or book online whenever you're ready!"`;
 
 interface Message {
   role: "user" | "assistant";
