@@ -328,7 +328,7 @@ export function LedgerPage() {
             >
               <p className="text-xs font-medium uppercase mb-1" style={{ color: "#6b7a90", letterSpacing: "0.6px" }}>{k.label}</p>
               <p className="text-2xl font-bold tracking-tight mb-0.5" style={{ color: "#1a2333" }}>{k.value}</p>
-              <p className="text-xs font-medium leading-tight" style={{ color: k.positive === true ? "#3db54a" : k.positive === false ? "#ef4444" : "#d97706" }}>{k.sub}</p>
+              <p className="text-xs font-medium leading-tight" style={{ color: "#64748b" }}>{k.sub}</p>
             </div>
           ))}
         </div>
