@@ -138,7 +138,7 @@ export function RyderPage() {
   }
 
   return (
-    <div className="flex flex-col md:flex-row gap-5 h-[calc(100vh-108px)] overflow-y-auto md:overflow-hidden">
+    <div className="flex flex-col md:flex-row gap-5 md:h-[calc(100vh-108px)]">
       {/* Chat panel */}
       <div
         className="flex-1 flex flex-col bg-white rounded-lg overflow-hidden min-w-0"
@@ -165,8 +165,8 @@ export function RyderPage() {
           </div>
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        {/* Messages — Fix 3: bounded height on mobile, flex-1 on desktop */}
+        <div className="overflow-y-auto px-5 py-4 space-y-4 min-h-[300px] max-h-[50vh] md:flex-1 md:max-h-none">
           {messages.map((msg, i) => (
             <div
               key={i}

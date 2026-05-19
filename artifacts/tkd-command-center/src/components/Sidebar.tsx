@@ -61,7 +61,11 @@ export function Sidebar({ onClose }: SidebarProps) {
   const [location] = useLocation();
 
   return (
-    <div className="tkd-sidebar w-[240px] flex-shrink-0 h-screen sticky top-0 flex flex-col overflow-hidden">
+    <div
+      className="tkd-sidebar w-[240px] flex-shrink-0 h-screen flex flex-col overflow-hidden"
+      /* Fix 6: sidebar itself scrolls on iOS with momentum */
+      style={{ WebkitOverflowScrolling: "touch" } as React.CSSProperties}
+    >
       {/* Gradient accent bar */}
       <div className="tkd-sidebar-accent" />
 
@@ -94,8 +98,11 @@ export function Sidebar({ onClose }: SidebarProps) {
         </span>
       </div>
 
-      {/* Nav */}
-      <div className="flex-1 overflow-y-auto py-4 space-y-5 px-3">
+      {/* Nav — Fix 6: scrollable with full height */}
+      <div
+        className="flex-1 py-4 space-y-5 px-3"
+        style={{ overflowY: "auto", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
+      >
         {NAV_SECTIONS.map((section) => (
           <div key={section.title}>
             <p className="tkd-section-label px-2 mb-1.5">{section.title}</p>
@@ -108,7 +115,6 @@ export function Sidebar({ onClose }: SidebarProps) {
                 return (
                   <li key={item.name}>
                     <Link href={item.href}>
-                      {/* Close sidebar on mobile after tapping a nav item */}
                       <span
                         onClick={onClose}
                         className={`relative flex items-center gap-3 w-full px-2 py-[7px] rounded-md text-sm cursor-pointer transition-colors group ${
@@ -116,29 +122,17 @@ export function Sidebar({ onClose }: SidebarProps) {
                         }`}
                         data-testid={`nav-${item.name.toLowerCase().replace(/\s+/g, "-")}`}
                       >
-                        {/* Hover overlay — inactive only */}
                         {!isActive && (
                           <span
                             className="absolute inset-0 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
                             style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
                           />
                         )}
-
                         <Icon className="w-4 h-4 flex-shrink-0 relative z-10" />
                         <span className="relative z-10 flex flex-col min-w-0">
-                          <span className="group-hover:text-white transition-colors leading-none">
-                            {item.name}
-                          </span>
+                          <span className="group-hover:text-white transition-colors leading-none">{item.name}</span>
                           {item.sub && (
-                            <span
-                              style={{
-                                fontSize: 9,
-                                color: "rgba(255,255,255,0.40)",
-                                display: "block",
-                                marginTop: 1,
-                                lineHeight: 1,
-                              }}
-                            >
+                            <span style={{ fontSize: 9, color: "rgba(255,255,255,0.40)", display: "block", marginTop: 1, lineHeight: 1 }}>
                               {item.sub}
                             </span>
                           )}
@@ -158,15 +152,8 @@ export function Sidebar({ onClose }: SidebarProps) {
         className="flex items-center gap-3 px-4 py-3.5 flex-shrink-0 cursor-pointer group"
         style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}
       >
-        <div
-          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
-          style={{ backgroundColor: "rgba(255,255,255,0.14)" }}
-        >
-          TK
-        </div>
-        <span className="flex-1 text-sm font-medium truncate" style={{ color: "rgba(255,255,255,0.85)" }}>
-          Tulsa Kwik Dry
-        </span>
+        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0" style={{ backgroundColor: "rgba(255,255,255,0.14)" }}>TK</div>
+        <span className="flex-1 text-sm font-medium truncate" style={{ color: "rgba(255,255,255,0.85)" }}>Tulsa Kwik Dry</span>
         <Settings className="w-4 h-4 flex-shrink-0" style={{ color: "rgba(255,255,255,0.35)" }} />
       </div>
     </div>

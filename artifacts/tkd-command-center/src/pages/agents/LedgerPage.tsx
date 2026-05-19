@@ -297,7 +297,7 @@ export function LedgerPage() {
         />
       )}
 
-      <div className="flex flex-col gap-4 h-[calc(100vh-108px)]">
+      <div className="flex flex-col gap-4 md:h-[calc(100vh-108px)]">
 
         {/* ── Page header with Last synced ── */}
         <div className="flex items-center justify-end flex-shrink-0 -mb-2">
@@ -334,7 +334,7 @@ export function LedgerPage() {
         </div>
 
         {/* ── Two-column layout ── */}
-        <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0">
+        <div className="flex flex-col md:flex-row gap-4 md:flex-1 md:min-h-0">
 
           {/* Left — Finn chat */}
           <div

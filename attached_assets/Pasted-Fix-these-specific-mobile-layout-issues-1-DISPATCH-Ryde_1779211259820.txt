@@ -1,0 +1,60 @@
+Fix these specific mobile layout issues:
+
+1. DISPATCH — Ryder Draft approval zone is covering 
+   content at the bottom. Fix by:
+   - Making the conversation area scrollable 
+     independently: overflow-y: auto, max-height: 40vh
+   - The approval zone should stick to bottom of 
+     conversation container, not the page
+   - Add padding-bottom: 120px to conversation 
+     area so content isn't hidden behind the draft zone
+
+2. LEDGER — Finn chat is being covered by P&L Summary.
+   On mobile, stack them vertically in this order:
+   1st: Finn chat (full width)
+   2nd: P&L Summary card below it
+   3rd: Technician Pay below that
+   No side by side columns on mobile at all.
+
+3. RYDER — Page size cutting off chat area. Fix by:
+   - Stats cards (Today's Stats, Top Questions) 
+     move BELOW the chat on mobile, not beside it
+   - Chat interface takes full width on mobile
+   - Set chat messages area to min-height: 300px 
+     and max-height: 50vh with overflow-y: auto
+   - Quick reply chips wrap to multiple lines
+
+4. UNIFIED INBOX — Background not following content.
+   Fix by:
+   - Set background-color: var(--bg) or #f0f2f5 
+     on the inbox container explicitly
+   - Ensure the thread list and conversation panel 
+     both have white card backgrounds
+   - On mobile: show thread list OR conversation, 
+     not both at once. When a thread is tapped, 
+     show conversation full screen with a 
+     "← Back" button to return to thread list
+
+5. REACTIVATION — Too stuffed together. Fix by:
+   - Single column layout on mobile
+   - Add more spacing between quote cards: 
+     margin-bottom: 16px on each card
+   - Make Draft and Mark Lost buttons stack 
+     vertically on mobile, full width
+   - Increase font size on customer names to 14px
+   - Add padding: 16px inside each quote card
+
+6. SIDEBAR SCROLL — When sidebar overlay is open, 
+   the page scrolls instead of the sidebar. Fix by:
+   - When sidebar is open on mobile, add 
+     overflow: hidden to document body to 
+     prevent page scrolling
+   - Add overflow-y: auto to the sidebar itself 
+     with height: 100vh so sidebar content scrolls
+   - When sidebar closes, restore 
+     body overflow: auto
+   - Add -webkit-overflow-scrolling: touch 
+     to sidebar for smooth iOS scrolling
+
+Apply all 6 fixes, test each page on a 390px 
+wide viewport (iPhone 14 size), and republish.

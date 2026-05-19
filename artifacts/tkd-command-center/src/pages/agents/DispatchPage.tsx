@@ -427,8 +427,8 @@ TECH: [Isiah / Peyton / Anthony / Evan]`}
             </span>
           </div>
 
-          {/* Message bubbles */}
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 min-h-0">
+          {/* Message bubbles — Fix 1: bounded height on mobile, full on desktop */}
+          <div className="overflow-y-auto px-5 py-4 space-y-3 max-h-[40vh] pb-[120px] md:pb-4 md:flex-1 md:max-h-none min-h-0">
             {active.messages.map((msg) => {
               if (msg.from === "system") {
                 return (
