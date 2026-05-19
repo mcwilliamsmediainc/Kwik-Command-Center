@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
-import { Search, Users, DollarSign, Clock, FileText, RefreshCw, WifiOff } from "lucide-react";
+import { Search, Users, DollarSign, Clock, FileText, RefreshCw, WifiOff, ChevronLeft, ChevronRight } from "lucide-react";
 
 /* ─── Types ────────────────────────────────────────────────────── */
 type DormantStatus = "Active" | "Dormant 3mo" | "Dormant 6mo" | "Dormant 1yr+" | "No Jobs";
+type FilterStatus  = "All" | "Active" | "Dormant" | "No Jobs";
 
 interface Customer {
   id: string;
@@ -28,7 +29,9 @@ interface CustomersResponse {
   error?: string;
 }
 
-/* ─── Status config ─────────────────────────────────────────────── */
+/* ─── Config ────────────────────────────────────────────────────── */
+const PAGE_SIZE = 25;
+
 const STATUS_CONFIG: Record<DormantStatus, { bg: string; text: string; border: string }> = {
   "Active":       { bg: "#f0fdf4", text: "#15803d", border: "#bbf7d0" },
   "Dormant 3mo":  { bg: "#fefce8", text: "#854d0e", border: "#fde68a" },
@@ -37,8 +40,9 @@ const STATUS_CONFIG: Record<DormantStatus, { bg: string; text: string; border: s
   "No Jobs":      { bg: "#f9fafb", text: "#6b7a90", border: "#e5e7eb" },
 };
 
+const FILTER_OPTIONS: FilterStatus[] = ["All", "Active", "Dormant", "No Jobs"];
+
 /* ─── Helpers ───────────────────────────────────────────────────── */
-function fmtPhone(p: string) { return p || "—"; }
 function fmtCurrency(n: number) {
   return "$" + n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
@@ -55,6 +59,13 @@ function avatarColor(name: string) {
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
   return colors[h % colors.length];
 }
+function matchesFilter(status: DormantStatus, f: FilterStatus) {
+  if (f === "All")    return true;
+  if (f === "Active") return status === "Active";
+  if (f === "No Jobs") return status === "No Jobs";
+  if (f === "Dormant") return status.startsWith("Dormant");
+  return true;
+}
 
 /* ─── Component ─────────────────────────────────────────────────── */
 export function CustomersPage() {
@@ -65,6 +76,8 @@ export function CustomersPage() {
   const [syncing, setSyncing]     = useState(false);
   const [error, setError]         = useState<string | null>(null);
   const [search, setSearch]       = useState("");
+  const [statusFilter, setStatusFilter] = useState<FilterStatus>("All");
+  const [page, setPage]           = useState(1);
 
   const fetchCustomers = useCallback(async (isManual = false) => {
     if (isManual) setSyncing(true); else setLoading(true);
@@ -76,6 +89,7 @@ export function CustomersPage() {
       setCustomers(data.customers);
       setMeta({ total_items: data.total_items, estimates_count: data.estimates_count, dormant_365: data.dormant_365, avg_ltv: data.avg_ltv });
       setSyncedAt(data.syncedAt);
+      setPage(1);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load customers");
     } finally {
@@ -86,21 +100,31 @@ export function CustomersPage() {
 
   useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
 
+  // Reset to page 1 when search/filter changes
+  useEffect(() => { setPage(1); }, [search, statusFilter]);
+
   const filtered = customers.filter((c) => {
     const q = search.toLowerCase();
-    return (
+    const matchSearch =
       c.name.toLowerCase().includes(q) ||
       c.phone.includes(q) ||
       (c.email ?? "").toLowerCase().includes(q) ||
-      (c.city ?? "").toLowerCase().includes(q)
-    );
+      (c.city ?? "").toLowerCase().includes(q);
+    return matchSearch && matchesFilter(c.status as DormantStatus, statusFilter);
   });
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage   = Math.min(page, totalPages);
+  const pageStart  = (safePage - 1) * PAGE_SIZE;
+  const pageRows   = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+  const showFrom   = filtered.length === 0 ? 0 : pageStart + 1;
+  const showTo     = Math.min(pageStart + PAGE_SIZE, filtered.length);
+
   const KPIS = [
-    { label: "Total Customers",  value: loading ? "—" : meta.total_items.toLocaleString(), sub: "in HouseCall Pro",      accent: "#2b4fac", Icon: Users       },
-    { label: "Avg Lifetime Value", value: loading ? "—" : fmtCurrency(meta.avg_ltv),         sub: "per customer",          accent: "#3db54a", Icon: DollarSign  },
-    { label: "Dormant 12mo+",    value: loading ? "—" : String(meta.dormant_365),           sub: "need reactivation",      accent: "#f97316", Icon: Clock       },
-    { label: "Open Quotes",      value: loading ? "—" : String(meta.estimates_count),        sub: "awaiting response",      accent: "#eab308", Icon: FileText    },
+    { label: "Total Customers",   value: loading ? "—" : meta.total_items.toLocaleString(), sub: "in HouseCall Pro",   accent: "#2b4fac", Icon: Users       },
+    { label: "Avg Lifetime Value", value: loading ? "—" : fmtCurrency(meta.avg_ltv),         sub: "per customer",       accent: "#3db54a", Icon: DollarSign  },
+    { label: "Dormant 12mo+",     value: loading ? "—" : String(meta.dormant_365),           sub: "need reactivation",  accent: "#f97316", Icon: Clock       },
+    { label: "Open Quotes",       value: loading ? "—" : String(meta.estimates_count),        sub: "awaiting response",  accent: "#eab308", Icon: FileText    },
   ];
 
   return (
@@ -132,8 +156,9 @@ export function CustomersPage() {
         style={{ border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
 
         {/* Toolbar */}
-        <div className="px-5 py-3.5 flex items-center gap-3" style={{ borderBottom: "1px solid #f0f0f0" }}>
-          <div className="relative flex-1 max-w-sm">
+        <div className="px-5 py-3.5 flex items-center gap-3 flex-wrap" style={{ borderBottom: "1px solid #f0f0f0" }}>
+          {/* Search */}
+          <div className="relative" style={{ minWidth: 220 }}>
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "#6b7a90" }} />
             <input
               value={search}
@@ -144,9 +169,24 @@ export function CustomersPage() {
               data-testid="input-customer-search"
             />
           </div>
+          {/* Status filter */}
+          <div className="flex items-center gap-1.5 rounded-md overflow-hidden" style={{ border: "1px solid #e4e8f0" }}>
+            {FILTER_OPTIONS.map((f) => (
+              <button
+                key={f}
+                onClick={() => setStatusFilter(f)}
+                className="px-3 py-1.5 text-xs font-semibold transition-colors"
+                style={{
+                  backgroundColor: statusFilter === f ? "#2b4fac" : "transparent",
+                  color: statusFilter === f ? "#fff" : "#6b7a90",
+                }}>
+                {f}
+              </button>
+            ))}
+          </div>
           {!loading && (
             <span className="text-xs" style={{ color: "#6b7a90" }}>
-              {filtered.length} of {customers.length} shown
+              {filtered.length} matching
             </span>
           )}
           <button
@@ -174,7 +214,7 @@ export function CustomersPage() {
         {/* Skeleton */}
         {loading && !error && (
           <div className="p-5 space-y-3">
-            {[...Array(6)].map((_, i) => (
+            {[...Array(8)].map((_, i) => (
               <div key={i} className="h-10 rounded bg-gray-50 animate-pulse" />
             ))}
           </div>
@@ -187,13 +227,13 @@ export function CustomersPage() {
               <thead>
                 <tr style={{ borderBottom: "1px solid #f0f0f0", backgroundColor: "#fafafa" }}>
                   {[
-                    { label: "Customer",      style: { minWidth: 180 } },
-                    { label: "Phone",         style: { minWidth: 130 } },
-                    { label: "Last Job",      style: { minWidth: 180 } },
-                    { label: "Jobs",          style: { minWidth: 60  } },
-                    { label: "Lifetime Value",style: { minWidth: 110 } },
-                    { label: "Status",        style: { minWidth: 120 } },
-                    { label: "",              style: { minWidth: 70  } },
+                    { label: "Customer",       style: { minWidth: 180 } },
+                    { label: "Phone",          style: { minWidth: 130 } },
+                    { label: "Last Job",       style: { minWidth: 180 } },
+                    { label: "Jobs",           style: { minWidth: 55  } },
+                    { label: "Lifetime Value", style: { minWidth: 110 } },
+                    { label: "Status",         style: { minWidth: 120 } },
+                    { label: "",               style: { minWidth: 70  } },
                   ].map(({ label, style }) => (
                     <th key={label} className="px-5 py-3 text-left text-xs font-semibold uppercase"
                       style={{ color: "#6b7a90", letterSpacing: "0.5px", ...style }}>{label}</th>
@@ -201,54 +241,47 @@ export function CustomersPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 && (
+                {pageRows.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-5 py-10 text-center text-sm" style={{ color: "#6b7a90" }}>
-                      {search ? "No customers match your search." : "No customers found."}
+                      {search || statusFilter !== "All" ? "No customers match your filters." : "No customers found."}
                     </td>
                   </tr>
                 )}
-                {filtered.map((c) => {
+                {pageRows.map((c) => {
                   const sc = STATUS_CONFIG[c.status as DormantStatus] ?? STATUS_CONFIG["No Jobs"];
                   const color = avatarColor(c.name);
                   return (
                     <tr key={c.id} className="group" style={{ borderBottom: "1px solid #f5f5f5" }}>
-                      {/* Customer */}
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2.5">
                           <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                             style={{ backgroundColor: color }}>{c.name[0] ?? "?"}</div>
                           <div className="min-w-0">
                             <span className="block font-semibold text-sm truncate" style={{ color: "#1a2333" }}>{c.name}</span>
-                            <span className="block text-[11px]" style={{ color: "#9ca3af" }}>{c.city || c.id.slice(0, 12)}</span>
+                            <span className="block text-[11px]" style={{ color: "#9ca3af" }}>{c.city || "—"}</span>
                           </div>
                         </div>
                       </td>
-                      {/* Phone */}
-                      <td className="px-5 py-3.5 text-sm" style={{ color: "#6b7a90" }}>{fmtPhone(c.phone)}</td>
-                      {/* Last job */}
+                      <td className="px-5 py-3.5 text-sm" style={{ color: "#6b7a90" }}>{c.phone || "—"}</td>
                       <td className="px-5 py-3.5">
                         <span className="block text-xs font-medium" style={{ color: "#1a2333" }}>
                           {c.lastJobService ? (c.lastJobService.length > 32 ? c.lastJobService.slice(0, 32) + "…" : c.lastJobService) : "—"}
                         </span>
                         <span className="block text-[11px] mt-0.5" style={{ color: "#9ca3af" }}>{fmtDate(c.lastJobDate)}</span>
                       </td>
-                      {/* Jobs count */}
                       <td className="px-5 py-3.5 text-sm font-semibold" style={{ color: "#1a2333" }}>
                         {c.jobCount || "—"}
                       </td>
-                      {/* LTV */}
                       <td className="px-5 py-3.5 text-sm font-semibold" style={{ color: "#1a2333" }}>
                         {c.totalSpent > 0 ? fmtCurrency(c.totalSpent) : "—"}
                       </td>
-                      {/* Status */}
                       <td className="px-5 py-3.5">
                         <span className="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap"
                           style={{ backgroundColor: sc.bg, color: sc.text, border: `1px solid ${sc.border}` }}>
                           {c.status}
                         </span>
                       </td>
-                      {/* Action */}
                       <td className="px-5 py-3.5">
                         <button className="text-xs font-semibold px-3 py-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
                           style={{ backgroundColor: "#eff6ff", color: "#2b4fac", border: "1px solid #bfdbfe" }}>
@@ -263,15 +296,38 @@ export function CustomersPage() {
           </div>
         )}
 
-        {/* Footer */}
+        {/* Pagination footer */}
         {!loading && !error && (
           <div className="px-5 py-3 flex items-center justify-between" style={{ borderTop: "1px solid #f0f0f0" }}>
             <p className="text-xs" style={{ color: "#6b7a90" }}>
-              Showing {customers.length} of {meta.total_items.toLocaleString()} customers
+              {filtered.length === 0
+                ? "No results"
+                : `Showing ${showFrom}–${showTo} of ${filtered.length.toLocaleString()} customers`}
             </p>
-            {syncedAt && (
-              <p className="text-xs" style={{ color: "#3db54a" }}>Last synced: {fmtSynced(syncedAt)}</p>
-            )}
+            <div className="flex items-center gap-3">
+              {syncedAt && (
+                <p className="text-xs" style={{ color: "#3db54a" }}>Last synced: {fmtSynced(syncedAt)}</p>
+              )}
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage <= 1}
+                  className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-md disabled:opacity-40"
+                  style={{ backgroundColor: "#f5f5f5", color: "#1a2333", border: "1px solid #e4e8f0" }}>
+                  <ChevronLeft className="w-3 h-3" /> Prev
+                </button>
+                <span className="text-xs px-2" style={{ color: "#6b7a90" }}>
+                  {safePage} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage >= totalPages}
+                  className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-md disabled:opacity-40"
+                  style={{ backgroundColor: "#f5f5f5", color: "#1a2333", border: "1px solid #e4e8f0" }}>
+                  Next <ChevronRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

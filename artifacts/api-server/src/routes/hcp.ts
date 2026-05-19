@@ -88,46 +88,79 @@ router.get("/hcp/customers", async (req, res) => {
     const cached = getCached(CACHE_KEY);
     if (cached) { res.json(cached); return; }
 
-    // 3 parallel calls: 1 customer page + 1 job page (for stats) + estimates count
-    const [custPage1, jobsPage1, estimatesData] = await Promise.all([
-      hcpGet("/customers", { page: "1", page_size: "100" }) as Promise<HcpCustomerPage>,
-      hcpGet("/jobs",      { page: "1", page_size: "100" }) as Promise<HcpJobPage>,
-      hcpGet("/estimates", { page: "1", page_size: "1"   }) as Promise<{ total_items: number }>,
+    const now = new Date();
+    const ago365 = new Date(now.getTime() - 365 * 86400000).toISOString();
+    const ago730 = new Date(now.getTime() - 730 * 86400000).toISOString();
+
+    // 9 parallel calls: 4 customer pages + 2 recent job pages + 2 old job pages + estimates
+    const [c1, c2, c3, c4, rj1, rj2, oj1, oj2, estimatesData] = await Promise.all([
+      hcpGet("/customers", { page: "1", page_size: "200" }) as Promise<HcpCustomerPage>,
+      hcpGet("/customers", { page: "2", page_size: "200" }) as Promise<HcpCustomerPage>,
+      hcpGet("/customers", { page: "3", page_size: "200" }) as Promise<HcpCustomerPage>,
+      hcpGet("/customers", { page: "4", page_size: "200" }) as Promise<HcpCustomerPage>,
+      // Recent jobs — identifies currently active customers
+      hcpGet("/jobs", { page: "1", page_size: "100" }) as Promise<HcpJobPage>,
+      hcpGet("/jobs", { page: "2", page_size: "100" }) as Promise<HcpJobPage>,
+      // Old jobs (1–2 yrs ago) — identifies dormant customers with real LTV
+      hcpGet("/jobs", { page: "1", page_size: "100", scheduled_start_min: ago730, scheduled_start_max: ago365 }) as Promise<HcpJobPage>,
+      hcpGet("/jobs", { page: "2", page_size: "100", scheduled_start_min: ago730, scheduled_start_max: ago365 }) as Promise<HcpJobPage>,
+      hcpGet("/estimates", { page: "1", page_size: "1" }) as Promise<{ total_items: number }>,
     ]);
 
-    // Build per-customer stats from recent jobs
-    const statsMap = new Map<string, CustomerStats>();
-    const allJobs = jobsPage1.jobs;
-
-    for (const job of allJobs) {
-      const custId = job.customer?.id;
-      if (!custId) continue;
-      const existing = statsMap.get(custId);
-      const jobDate = job.schedule?.scheduled_start ?? job.created_at ?? "";
-      const amount = resolveAmount(job) ?? 0;
-
-      if (!existing) {
-        statsMap.set(custId, {
-          lastJobDate: jobDate,
-          lastJobService: job.description ?? "",
-          jobCount: 1,
-          totalSpent: amount,
-        });
-      } else {
-        existing.jobCount++;
-        existing.totalSpent += amount;
-        if (jobDate > existing.lastJobDate) {
-          existing.lastJobDate = jobDate;
-          existing.lastJobService = job.description ?? "";
+    // Build separate stats maps: recent (≤ ~90 days) vs old (365–730 days ago)
+    function buildStatsMap(jobs: HcpJob[]): Map<string, CustomerStats> {
+      const map = new Map<string, CustomerStats>();
+      for (const job of jobs) {
+        const custId = job.customer?.id;
+        if (!custId) continue;
+        const jobDate = job.schedule?.scheduled_start ?? job.created_at ?? "";
+        const amount = resolveAmount(job) ?? 0;
+        const name = [job.customer?.first_name, job.customer?.last_name].filter(Boolean).join(" ");
+        const phone = (job.customer?.mobile_number ?? "").replace(/(\d{3})(\d{3})(\d{4})/, "($1) $2-$3");
+        const existing = map.get(custId);
+        if (!existing) {
+          map.set(custId, { lastJobDate: jobDate, lastJobService: job.description ?? "", jobCount: 1, totalSpent: amount, customerName: name, customerPhone: phone });
+        } else {
+          existing.jobCount++;
+          existing.totalSpent += amount;
+          if (jobDate > existing.lastJobDate) { existing.lastJobDate = jobDate; existing.lastJobService = job.description ?? ""; }
         }
       }
+      return map;
     }
 
-    const allCustomers = custPage1.customers ?? [];
+    const recentMap = buildStatsMap([...rj1.jobs, ...rj2.jobs]);
+    const oldMap    = buildStatsMap([...oj1.jobs, ...oj2.jobs]);
+
+    // Dormant = appeared in old jobs (1–2 yrs ago) but NOT in recent jobs
+    const dormantFromJobs = [...oldMap.entries()]
+      .filter(([custId]) => !recentMap.has(custId))
+      .map(([custId, stats]) => ({
+        id: custId,
+        name: stats.customerName,
+        phone: stats.customerPhone,
+        lastJobService: stats.lastJobService,
+        lastJobDate: stats.lastJobDate,
+        totalSpent: stats.totalSpent,
+        daysSince: stats.lastJobDate
+          ? Math.floor((Date.now() - new Date(stats.lastJobDate).getTime()) / 86400000)
+          : null,
+      }))
+      .sort((a, b) => b.totalSpent - a.totalSpent);
+
+    const allCustomers = [
+      ...(c1.customers ?? []),
+      ...(c2.customers ?? []),
+      ...(c3.customers ?? []),
+      ...(c4.customers ?? []),
+    ];
     const normalized = allCustomers
       .filter((c) => c.first_name || c.last_name)
       .map((c) => {
-        const stats = statsMap.get(c.id);
+        // Prefer recent stats; fall back to old stats for dormant customers
+        const recent = recentMap.get(c.id);
+        const old    = oldMap.get(c.id);
+        const stats  = recent ?? old;
         const phone = c.mobile_number ?? c.home_number ?? c.work_number ?? "";
         const city = c.addresses?.[0]?.city ?? "";
         const lastJobDate = stats?.lastJobDate ?? "";
@@ -151,16 +184,16 @@ router.get("/hcp/customers", async (req, res) => {
       })
       .sort((a, b) => (b.lastJobDate > a.lastJobDate ? 1 : -1));
 
-    const dormant365 = normalized.filter((c) => c.daysSince !== null && c.daysSince > 365).length;
     const avgLtv = normalized.length
       ? Math.round(normalized.reduce((s, c) => s + c.totalSpent, 0) / normalized.length)
       : 0;
 
     const payload = {
       customers: normalized,
-      total_items: custPage1.total_items,
+      dormant_customers: dormantFromJobs,
+      total_items: c1.total_items,
       estimates_count: estimatesData.total_items,
-      dormant_365: dormant365,
+      dormant_365: dormantFromJobs.length,
       avg_ltv: avgLtv,
       syncedAt: new Date().toISOString(),
     };
@@ -185,6 +218,7 @@ interface RawCustomer {
   mobile_number?: string;
   home_number?: string;
   work_number?: string;
+  updated_at?: string;
   addresses?: { city?: string }[];
 }
 
@@ -198,6 +232,8 @@ interface CustomerStats {
   lastJobService: string;
   jobCount: number;
   totalSpent: number;
+  customerName: string;
+  customerPhone: string;
 }
 
 function dormantStatus(days: number | null): string {
