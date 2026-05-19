@@ -35,9 +35,12 @@ const STATUS_CONFIG: Record<NormalizedStatus, { bg: string; text: string; border
   "Cancelled":   { bg: "#fef2f2", text: "#991b1b", border: "#fecaca", icon: XCircle     },
 };
 
-function fmt(amount: number | null) {
-  if (amount == null) return "—";
-  return "$" + amount.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+function fmt(amount: number | null): { text: string; pending: boolean } {
+  if (amount == null) return { text: "Pending", pending: true };
+  return {
+    text: "$" + amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    pending: false,
+  };
 }
 
 function fmtSynced(iso: string) {
@@ -218,8 +221,8 @@ export function JobPipelinePage() {
                         </div>
                       </td>
                       <td className="px-5 py-3.5 text-xs" style={{ color: "#6b7a90" }}>{j.location || "—"}</td>
-                      <td className="px-5 py-3.5 text-sm font-bold whitespace-nowrap" style={{ color: "#1a2333" }}>
-                        {fmt(j.totalAmount)}
+                      <td className="px-5 py-3.5 text-sm font-bold whitespace-nowrap">
+                        {(() => { const f = fmt(j.totalAmount); return <span style={{ color: f.pending ? "#9ca3af" : "#1a2333", fontWeight: f.pending ? 400 : 700, fontSize: f.pending ? "11px" : undefined }}>{f.text}</span>; })()}
                       </td>
                       <td className="px-5 py-3.5">
                         <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap"
@@ -239,7 +242,7 @@ export function JobPipelinePage() {
         {!loading && !error && (
           <div className="px-5 py-3 flex items-center justify-between" style={{ borderTop: "1px solid #f0f0f0" }}>
             <p className="text-xs" style={{ color: "#6b7a90" }}>
-              {jobs.length} jobs shown · Total value: {fmt(totalValue)}
+              {jobs.length} jobs shown · Total value: {fmt(totalValue).text}
               {dateFilter === "all" && totalItems > jobs.length && ` · ${totalItems.toLocaleString()} total in HCP`}
             </p>
             {syncedAt && (

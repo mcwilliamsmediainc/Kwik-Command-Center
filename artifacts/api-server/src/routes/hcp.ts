@@ -50,6 +50,9 @@ router.get("/hcp/jobs", async (req, res) => {
       page_size: number;
     };
 
+    if (data.jobs.length > 0) {
+      req.log.info({ rawJobSample: data.jobs[0] }, "hcp raw job fields (first result)");
+    }
     const normalized = data.jobs.map(normalizeJob);
     res.json({
       jobs: normalized,
@@ -109,11 +112,34 @@ interface HcpJob {
   description?: string;
   work_status: string;
   total_amount?: number;
+  invoice_total?: number;
+  total?: number;
+  price?: number;
+  job_total?: number;
   outstanding_balance?: number;
+  subtotal?: number;
   customer?: { first_name?: string; last_name?: string; mobile_number?: string };
   address?: { street?: string; street_line_2?: string; city?: string; state?: string; zip?: string };
   schedule?: { scheduled_start?: string; scheduled_end?: string };
   assigned_employees?: HcpEmployee[];
+  [key: string]: unknown;
+}
+
+/** Resolve total from whichever field HCP populates; divide by 100 (cents). Returns null if no positive value found. */
+function resolveAmount(j: HcpJob): number | null {
+  const candidates = [
+    j.total_amount,
+    j.invoice_total,
+    j.total,
+    j.price,
+    j.job_total,
+    j.outstanding_balance,
+    j.subtotal,
+  ];
+  for (const val of candidates) {
+    if (val != null && val > 0) return val / 100;
+  }
+  return null;
 }
 
 function normalizeJob(j: HcpJob) {
@@ -132,8 +158,7 @@ function normalizeJob(j: HcpJob) {
     service: j.description ?? "",
     status: normalizeStatus(j.work_status),
     rawStatus: j.work_status,
-    totalAmount: j.total_amount != null ? j.total_amount / 100 : null,
-    outstandingBalance: j.outstanding_balance != null ? j.outstanding_balance / 100 : null,
+    totalAmount: resolveAmount(j),
     technician: tech ? `${tech.first_name} ${tech.last_name}` : "",
     technicianFirst: tech?.first_name ?? "",
     techColor: tech?.color_hex ? `#${tech.color_hex}` : "#6b7a90",
