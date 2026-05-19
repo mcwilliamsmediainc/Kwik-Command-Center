@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  DollarSign, Star, Bot, Briefcase, Plus, Send, FileText, BarChart,
+  Plus, Send, FileText, BarChart,
   AlertTriangle, MessageSquare, TrendingUp, Zap, ExternalLink,
 } from "lucide-react";
 import { KpiCard } from "@/components/KpiCard";
@@ -49,7 +49,7 @@ export function Dashboard() {
     if (jobsRes.status === "fulfilled" && !jobsRes.value.error) {
       const j = jobsRes.value as JobsData;
       const open = (j.jobs ?? []).filter((job: { status: string }) =>
-        job.status === "scheduled" || job.status === "in_progress"
+        job.status === "Scheduled" || job.status === "In Progress"
       ).length;
       setOpenJobs(open);
     }
@@ -109,7 +109,7 @@ export function Dashboard() {
         <KpiCard
           title="Revenue MTD"
           value={loading ? "—" : fmt$(fin?.totalRevenue ?? 0)}
-          icon={DollarSign} accentColor="#2b4fac" topBorderColor="#2b4fac"
+          accentColor="#2b4fac" topBorderColor="#2b4fac"
           trend={fin ? `${fin.jobCount} jobs · avg ${fmt$(fin.avgJobValue)}` : "loading…"}
           trendUp={true}
           subtext={fin ? `${fin.jobCount} fetched of ${fin.totalJobItems} total` : ""}
@@ -117,23 +117,24 @@ export function Dashboard() {
         <KpiCard
           title="Google Reviews"
           value={loading ? "—" : reviews ? `${reviews.totalReviews} · ${reviews.rating}★` : "unavailable"}
-          icon={Star} accentColor="#3db54a" topBorderColor="#3db54a"
+          accentColor="#3db54a" topBorderColor="#3db54a"
           trend={reviews ? "Google Places · live" : "checking…"}
-          trendUp={true} subtext=""
+          trendUp={true}
         />
         <KpiCard
           title="Ryder Sessions"
           value={loading ? "—" : `${ryder?.ryderSessions ?? 0} today`}
-          icon={Bot} accentColor="#7c3aed" topBorderColor="#7c3aed"
+          accentColor="#7c3aed" topBorderColor="#7c3aed"
           trend="increments per AI chat"
-          trendUp={true} subtext=""
+          trendUp={true}
         />
         <KpiCard
           title="Open Jobs Today"
-          value={loading ? "—" : openJobs !== null ? `${openJobs} open` : "—"}
-          icon={Briefcase} accentColor="#d97706" topBorderColor="#d97706"
-          trend="scheduled + in progress"
-          trendUp={false} subtext=""
+          value={loading ? "—" : openJobs === null ? "—" : openJobs === 0 ? "All Clear" : `${openJobs} open`}
+          accentColor={openJobs === 0 ? "#3db54a" : "#d97706"}
+          topBorderColor={openJobs === 0 ? "#3db54a" : "#d97706"}
+          trend={openJobs === 0 ? "No scheduled or in-progress jobs" : "scheduled + in progress"}
+          trendUp={openJobs === 0}
         />
       </div>
 

@@ -3,7 +3,7 @@ import { LucideIcon } from "lucide-react";
 interface KpiCardProps {
   title: string;
   value: string | number;
-  icon: LucideIcon;
+  icon?: LucideIcon;
   accentColor: string;
   topBorderColor: string;
   trend?: string;
@@ -33,7 +33,7 @@ export function KpiCard({
     >
       <div className="p-5">
         <div className="flex justify-between items-start">
-          <div className="space-y-1.5 flex-1 min-w-0 pr-3">
+          <div className={`space-y-1.5 flex-1 min-w-0 ${Icon ? "pr-3" : ""}`}>
             <p className="text-xs font-medium uppercase tracking-wide" style={{ color: "#6b7a90", letterSpacing: "0.6px" }}>
               {title}
             </p>
@@ -41,12 +41,14 @@ export function KpiCard({
               {value}
             </p>
           </div>
-          <div
-            className="p-2.5 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: `${accentColor}14` }}
-          >
-            <Icon className="w-5 h-5" style={{ color: accentColor }} />
-          </div>
+          {Icon && (
+            <div
+              className="p-2.5 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: `${accentColor}14` }}
+            >
+              <Icon className="w-5 h-5" style={{ color: accentColor }} />
+            </div>
+          )}
         </div>
         {(trend || subtext) && (
           <div className="mt-3 flex items-center gap-1.5 text-xs">
