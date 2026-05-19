@@ -158,7 +158,7 @@ export function CustomersPage() {
         {/* Toolbar */}
         <div className="px-5 py-3.5 flex items-center gap-3 flex-wrap" style={{ borderBottom: "1px solid #f0f0f0" }}>
           {/* Search */}
-          <div className="relative" style={{ minWidth: 220 }}>
+          <div className="relative flex-1 md:flex-none" style={{ minWidth: 0 }}>
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "#6b7a90" }} />
             <input
               value={search}
@@ -220,9 +220,57 @@ export function CustomersPage() {
           </div>
         )}
 
-        {/* Table */}
+        {/* Mobile card list — shown only on small screens */}
         {!loading && !error && (
-          <div className="overflow-x-auto">
+          <div className="md:hidden divide-y divide-gray-50">
+            {pageRows.length === 0 && (
+              <div className="px-5 py-10 text-center text-sm" style={{ color: "#6b7a90" }}>
+                {search || statusFilter !== "All" ? "No customers match your filters." : "No customers found."}
+              </div>
+            )}
+            {pageRows.map((c) => {
+              const sc    = STATUS_CONFIG[c.status as DormantStatus] ?? STATUS_CONFIG["No Jobs"];
+              const color = avatarColor(c.name);
+              return (
+                <div key={c.id} className="px-4 py-3.5 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-white text-sm font-bold mt-0.5"
+                    style={{ backgroundColor: color }}>{c.name[0] ?? "?"}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 mb-0.5">
+                      <span className="font-semibold text-sm" style={{ color: "#1a2333" }}>{c.name}</span>
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: sc.bg, color: sc.text, border: `1px solid ${sc.border}` }}>
+                        {c.status}
+                      </span>
+                    </div>
+                    <p className="text-xs mb-1" style={{ color: "#6b7a90" }}>
+                      {c.phone || "—"} · {c.city || "—"}
+                    </p>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="text-xs" style={{ color: "#6b7a90" }}>
+                        {c.jobCount || 0} jobs
+                      </span>
+                      {c.totalSpent > 0 && (
+                        <span className="text-xs font-semibold" style={{ color: "#2b4fac" }}>
+                          {fmtCurrency(c.totalSpent)} LTV
+                        </span>
+                      )}
+                      {c.lastJobDate && (
+                        <span className="text-xs" style={{ color: "#9ca3af" }}>
+                          Last: {fmtDate(c.lastJobDate)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Desktop table — hidden on mobile */}
+        {!loading && !error && (
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: "1px solid #f0f0f0", backgroundColor: "#fafafa" }}>

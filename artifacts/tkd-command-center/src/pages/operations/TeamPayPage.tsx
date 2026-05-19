@@ -78,7 +78,7 @@ export function TeamPayPage() {
   const month        = data?.month ?? "May 2026";
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 pb-10">
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -90,8 +90,8 @@ export function TeamPayPage() {
         </button>
       </div>
 
-      {/* Tech cards */}
-      <div className="grid grid-cols-3 gap-5">
+      {/* Tech cards — Fix: single column on mobile */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
         {loading
           ? [1,2,3].map(i => <Skeleton key={i} />)
           : techs.length === 0
@@ -101,14 +101,14 @@ export function TeamPayPage() {
               return (
                 <div key={t.name} className="bg-white rounded-xl overflow-hidden"
                   style={{ border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", borderTop: `2px solid ${color}` }}>
-                  {/* Card header */}
-                  <div className="px-6 py-5 flex flex-col items-center" style={{ borderBottom: "1px solid #f0f0f0" }}>
-                    <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-3"
+                  {/* Card header — avatar 48px on mobile, 64px on desktop, centered */}
+                  <div className="px-5 py-5 md:px-6 flex flex-col items-center" style={{ borderBottom: "1px solid #f0f0f0" }}>
+                    <div className="w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center text-white text-xl md:text-2xl font-bold mb-3"
                       style={{ backgroundColor: color }}>
                       {initials(t.name)}
                     </div>
-                    <p className="text-lg font-bold mb-1" style={{ color: "#1a2333" }}>{t.name}</p>
-                    <div className="flex items-center gap-2">
+                    <p className="text-lg font-bold mb-1 text-center" style={{ color: "#1a2333" }}>{t.name}</p>
+                    <div className="flex items-center gap-2 flex-wrap justify-center">
                       <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: "#f1f5f9", color: "#475569" }}>
                         1099 Contractor
                       </span>
@@ -119,8 +119,8 @@ export function TeamPayPage() {
                     </div>
                   </div>
 
-                  {/* Stats */}
-                  <div className="px-6 py-2">
+                  {/* Stats — full width label/value rows */}
+                  <div className="px-5 py-2 md:px-6">
                     <StatRow icon={Briefcase}  label="Jobs This Month"   value={`${t.jobs} jobs`} color={color} />
                     <StatRow icon={TrendingUp} label="Revenue Generated" value={fmt$(t.revenue)}  color={color} />
                     <StatRow icon={DollarSign} label="Contractor Pay"    value={fmt$(t.pay)}      color={color} />
@@ -136,8 +136,8 @@ export function TeamPayPage() {
                   </div>
 
                   {/* Footer */}
-                  <div className="px-6 pb-5">
-                    <button className="w-full py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-80"
+                  <div className="px-5 pb-5 md:px-6">
+                    <button className="w-full py-2.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-80"
                       style={{ backgroundColor: `${color}14`, color, border: `1px solid ${color}30` }}
                       data-testid={`button-view-jobs-${t.name.toLowerCase().replace(/\s+/g, "-")}`}>
                       View Jobs →
@@ -149,8 +149,8 @@ export function TeamPayPage() {
         }
       </div>
 
-      {/* Summary row */}
-      <div className="grid grid-cols-3 gap-5">
+      {/* Summary row — single column on mobile */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-5">
         {[
           { label: "Total Jobs Completed",    value: loading ? "—" : String(totalJobs),    color: "#2b4fac" },
           { label: "Total Revenue Generated", value: loading ? "—" : fmt$(totalRevenue),   color: "#3db54a" },
