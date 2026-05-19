@@ -24,6 +24,19 @@ async function hcpGet(path: string, params?: Record<string, string>) {
 
 const router: IRouter = Router();
 
+/* ── Simple in-memory cache ───────────────────────────────────── */
+interface CacheEntry<T> { data: T; expiresAt: number }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const cache = new Map<string, CacheEntry<any>>();
+function getCached<T>(key: string): T | null {
+  const entry = cache.get(key);
+  if (entry && Date.now() < entry.expiresAt) return entry.data as T;
+  return null;
+}
+function setCached<T>(key: string, data: T, ttlMs = 3 * 60 * 1000): void {
+  cache.set(key, { data, expiresAt: Date.now() + ttlMs });
+}
+
 router.get("/hcp/jobs", async (req, res) => {
   try {
     const today = new Date();
@@ -71,16 +84,129 @@ router.get("/hcp/jobs", async (req, res) => {
 
 router.get("/hcp/customers", async (req, res) => {
   try {
-    const data = await hcpGet("/customers", {
-      page: String(req.query.page ?? 1),
-      page_size: String(req.query.page_size ?? 50),
-    });
-    res.json(data);
+    const CACHE_KEY = "hcp:customers";
+    const cached = getCached(CACHE_KEY);
+    if (cached) { res.json(cached); return; }
+
+    // 3 parallel calls: 1 customer page + 1 job page (for stats) + estimates count
+    const [custPage1, jobsPage1, estimatesData] = await Promise.all([
+      hcpGet("/customers", { page: "1", page_size: "100" }) as Promise<HcpCustomerPage>,
+      hcpGet("/jobs",      { page: "1", page_size: "100" }) as Promise<HcpJobPage>,
+      hcpGet("/estimates", { page: "1", page_size: "1"   }) as Promise<{ total_items: number }>,
+    ]);
+
+    // Build per-customer stats from recent jobs
+    const statsMap = new Map<string, CustomerStats>();
+    const allJobs = jobsPage1.jobs;
+
+    for (const job of allJobs) {
+      const custId = job.customer?.id;
+      if (!custId) continue;
+      const existing = statsMap.get(custId);
+      const jobDate = job.schedule?.scheduled_start ?? job.created_at ?? "";
+      const amount = resolveAmount(job) ?? 0;
+
+      if (!existing) {
+        statsMap.set(custId, {
+          lastJobDate: jobDate,
+          lastJobService: job.description ?? "",
+          jobCount: 1,
+          totalSpent: amount,
+        });
+      } else {
+        existing.jobCount++;
+        existing.totalSpent += amount;
+        if (jobDate > existing.lastJobDate) {
+          existing.lastJobDate = jobDate;
+          existing.lastJobService = job.description ?? "";
+        }
+      }
+    }
+
+    const allCustomers = custPage1.customers ?? [];
+    const normalized = allCustomers
+      .filter((c) => c.first_name || c.last_name)
+      .map((c) => {
+        const stats = statsMap.get(c.id);
+        const phone = c.mobile_number ?? c.home_number ?? c.work_number ?? "";
+        const city = c.addresses?.[0]?.city ?? "";
+        const lastJobDate = stats?.lastJobDate ?? "";
+        const daysSince = lastJobDate
+          ? Math.floor((Date.now() - new Date(lastJobDate).getTime()) / 86400000)
+          : null;
+
+        return {
+          id: c.id,
+          name: [c.first_name, c.last_name].filter(Boolean).join(" "),
+          phone: phone ? phone.replace(/(\d{3})(\d{3})(\d{4})/, "($1) $2-$3") : "",
+          email: c.email ?? "",
+          city,
+          lastJobDate,
+          lastJobService: stats?.lastJobService ?? "",
+          jobCount: stats?.jobCount ?? 0,
+          totalSpent: stats?.totalSpent ?? 0,
+          status: dormantStatus(daysSince),
+          daysSince,
+        };
+      })
+      .sort((a, b) => (b.lastJobDate > a.lastJobDate ? 1 : -1));
+
+    const dormant365 = normalized.filter((c) => c.daysSince !== null && c.daysSince > 365).length;
+    const avgLtv = normalized.length
+      ? Math.round(normalized.reduce((s, c) => s + c.totalSpent, 0) / normalized.length)
+      : 0;
+
+    const payload = {
+      customers: normalized,
+      total_items: custPage1.total_items,
+      estimates_count: estimatesData.total_items,
+      dormant_365: dormant365,
+      avg_ltv: avgLtv,
+      syncedAt: new Date().toISOString(),
+    };
+    setCached(CACHE_KEY, payload);
+    res.json(payload);
   } catch (err) {
     req.log.error({ err }, "hcp /customers failed");
     res.status(502).json({ error: String(err instanceof Error ? err.message : err) });
   }
 });
+
+interface HcpCustomerPage {
+  customers: RawCustomer[];
+  total_items: number;
+}
+
+interface RawCustomer {
+  id: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  mobile_number?: string;
+  home_number?: string;
+  work_number?: string;
+  addresses?: { city?: string }[];
+}
+
+interface HcpJobPage {
+  jobs: HcpJob[];
+  total_items: number;
+}
+
+interface CustomerStats {
+  lastJobDate: string;
+  lastJobService: string;
+  jobCount: number;
+  totalSpent: number;
+}
+
+function dormantStatus(days: number | null): string {
+  if (days === null) return "No Jobs";
+  if (days <= 90)  return "Active";
+  if (days <= 180) return "Dormant 3mo";
+  if (days <= 365) return "Dormant 6mo";
+  return "Dormant 1yr+";
+}
 
 router.get("/hcp/invoices", async (req, res) => {
   try {
@@ -120,9 +246,10 @@ interface HcpJob {
   job_total?: number;
   outstanding_balance?: number;
   subtotal?: number;
-  customer?: { first_name?: string; last_name?: string; mobile_number?: string };
+  customer?: { id?: string; first_name?: string; last_name?: string; mobile_number?: string };
   address?: { street?: string; street_line_2?: string; city?: string; state?: string; zip?: string };
   schedule?: { scheduled_start?: string; scheduled_end?: string };
+  created_at?: string;
   assigned_employees?: HcpEmployee[];
   [key: string]: unknown;
 }
