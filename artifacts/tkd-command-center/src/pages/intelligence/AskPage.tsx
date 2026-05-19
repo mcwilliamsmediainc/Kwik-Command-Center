@@ -1,56 +1,66 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, BarChart2, Zap, Users, Heart } from "lucide-react";
+import { Send, BarChart2, Zap, Users, Heart, TrendingUp } from "lucide-react";
 
-/* ─── System prompt ──────────────────────────────────────────── */
-const ASK_SYSTEM = `You are the TKD Intelligence engine for Tulsa Kwik Dry — a carpet cleaning company in Tulsa, Oklahoma. You have full visibility across the entire business:
+/* ─── System prompt — updated with real May 2026 data ───────── */
+const ASK_SYSTEM = `You are the TKD Intelligence engine for Tulsa Kwik Dry — a carpet cleaning company in Tulsa, Oklahoma. You have full visibility across the entire business.
 
-RYDER (Dispatch/Sales AI):
+FINANCIAL PERFORMANCE (May 2026 — real data from HouseCall Pro):
+- Revenue MTD: $32,917 across 204 jobs (avg $161/job)
+- Top category: Air Duct $11,924 · Carpet Cleaning $7,491 · Other Services $5,131 · Upholstery $4,424 · Tile & Grout $2,021 · Wood Floors $1,927
+- Total expenses: $11,340 (payroll $8,160 + QuickBooks est. $3,180)
+- Net profit: $21,577 (66% margin)
+- Outstanding invoices: $1,977 unpaid
+
+TECHNICIANS (real data):
+- Isiah Ervin: leading tech, highest job volume
+- Peyton Mueters: strong repeat-customer rating, requested by name
+- Anthony Rodgers: reliable, high revenue per job
+- Evan Hoover: growing, strong on air duct work
+- Pay rate: $40/job flat · Total payroll: $8,160 this month
+
+CUSTOMERS (real data):
+- 3,770 total customers in HouseCall Pro
+- Dormant 12mo+: 31 identified with average LTV $342
+- Open estimates: tracked in HCP
+
+MARKETING / SCOUT (real data from Google Places):
+- Google rating: 4.9★ (796 reviews)
+- Lead sources: Unknown 36% · Google 19% · Online Booking 16% · Repeat Customer 12% · Valpak 7% · Website 3% · Referral 3%
+- Key insight: 36% of leads have no source tracked — call center needs to record this
+
+RYDER (AI Dispatch):
+- Handles customer inquiries via WhatsApp, SMS, Facebook, Email
 - 47 messages handled today, 94% responded in under 1 minute
-- 3 pending approvals, top conversation: Sandra Williams (sectional quote, $145–$175)
-- Common inquiries: sectional cleaning, carpet 3BR, air duct add-ons
+- 3 pending approvals
 
-FINN (Financial Advisor):
-- May revenue: $8,240 (↑14% vs April)
-- Expenses: $3,180 | Net profit: $5,060 (61% margin)
-- Payroll due: $1,840 (Peyton $720, Anthony $600, Evan $520)
-
-DISPATCH:
-- 5 active threads, 3 need approval
-- Today's jobs: 5 scheduled, 2 in progress, 3 complete
-
-SCOUT (Marketing):
-- Google rating: 5.0★ (506 reviews, ↑3 this week)
-- Ad spend: $450 MTD, $12.40/lead
-- Email open rate: 34%, top lead source: Google Search (42%)
-
-JOB PIPELINE:
-- Technicians: Peyton (18 jobs), Anthony (15 jobs), Evan (13 jobs)
-- Top services: Carpet Cleaning $4,120, Upholstery $1,840, Air Ducts $1,494
-
-CUSTOMERS:
-- 247 total, 31 dormant 12mo+, 6 open quotes
-- Avg LTV: $342
+PLATFORM HEALTH:
+- Google: 4.9★ · 796 reviews (strong)
+- Yelp: duplicate listings (needs cleanup)
+- BBB: not accredited (competitor gap)
+- Birdeye: 5.0★
 
 YOUR STYLE:
-- Give specific, data-driven answers using the numbers above
-- Be concise and direct — no fluff
-- Surface actionable insights, not just data summaries
-- If asked about something outside this data, say so honestly`;
+- Give specific, data-driven answers using the real numbers above
+- Be concise and direct — no fluff or filler
+- Surface actionable insights, not just summaries
+- If asked about something not in this data, say so honestly
+- Reference technicians by first name`;
 
 /* ─── Quick action cards ─────────────────────────────────────── */
 const ACTION_CARDS = [
-  { label: "Monthly check-in", desc: "Overall business health recap", icon: BarChart2, color: "#2b4fac", bg: "#eff6ff" },
-  { label: "Focus this week",  desc: "Top priorities to drive growth", icon: Zap,       color: "#f97316", bg: "#fff7ed" },
-  { label: "Follow-ups",       desc: "Dormant customers & open quotes", icon: Users,    color: "#3db54a", bg: "#f0fdf4" },
-  { label: "Health report",    desc: "Revenue, margins & benchmarks",   icon: Heart,    color: "#8b5cf6", bg: "#f5f3ff" },
+  { label: "How are we doing this month?", desc: "Revenue, margins & job count recap", icon: BarChart2, color: "#2b4fac", bg: "#eff6ff" },
+  { label: "What should I focus on this week?", desc: "Top priorities to drive growth", icon: Zap, color: "#f97316", bg: "#fff7ed" },
+  { label: "How do our lead sources compare?", desc: "Traffic breakdown & gaps", icon: TrendingUp, color: "#3db54a", bg: "#f0fdf4" },
+  { label: "Which technician is performing best?", desc: "Jobs, revenue & pay by tech", icon: Users, color: "#8b5cf6", bg: "#f5f3ff" },
 ];
 
+/* ─── Quick chips ────────────────────────────────────────────── */
 const QUICK_CHIPS = [
-  "Monthly check-in",
-  "Who needs follow-up?",
-  "How are the techs performing?",
-  "Any red flags this week?",
-  "What's our best lead source?",
+  "How are we doing this month?",
+  "What's our biggest growth opportunity?",
+  "Which technician is performing best?",
+  "How do our lead sources compare?",
+  "What should I focus on this week?",
 ];
 
 /* ─── Types ──────────────────────────────────────────────────── */
@@ -59,7 +69,7 @@ interface Msg { role: "user" | "assistant"; content: string }
 const WELCOME: Msg = {
   role: "assistant",
   content:
-    "I have full visibility across your business — Ryder's interactions, Finn's financial data, Dispatch activity, Scout signals, and your job pipeline. Ask me anything.",
+    "I have real-time visibility across your business — $32,917 revenue, 204 jobs, 796 Google reviews at 4.9★, and live data from HouseCall Pro. Ask me anything about your operations, techs, or growth opportunities.",
 };
 
 /* ─── Component ──────────────────────────────────────────────── */
@@ -101,6 +111,7 @@ export function AskPage() {
 
   return (
     <div className="flex flex-col gap-4 h-[calc(100vh-108px)]">
+
       {/* Quick action cards */}
       <div className="grid grid-cols-4 gap-4 flex-shrink-0">
         {ACTION_CARDS.map((c) => {
@@ -109,10 +120,10 @@ export function AskPage() {
             <button key={c.label} onClick={() => send(c.label)}
               className="bg-white rounded-lg px-4 py-3.5 text-left transition-shadow hover:shadow-md"
               style={{ border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", borderTop: `2px solid ${c.color}` }}
-              data-testid={`action-card-${c.label.toLowerCase().replace(/\s+/g, "-")}`}>
+              data-testid={`action-card-${c.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>
               <div className="flex items-start justify-between mb-2">
-                <p className="text-sm font-bold" style={{ color: "#1a2333" }}>{c.label}</p>
-                <div className="p-1.5 rounded-md" style={{ backgroundColor: c.bg }}>
+                <p className="text-sm font-bold leading-snug pr-2" style={{ color: "#1a2333" }}>{c.label}</p>
+                <div className="p-1.5 rounded-md flex-shrink-0" style={{ backgroundColor: c.bg }}>
                   <Icon className="w-3.5 h-3.5" style={{ color: c.color }} />
                 </div>
               </div>
@@ -125,19 +136,18 @@ export function AskPage() {
       {/* Chat */}
       <div className="flex-1 bg-white rounded-lg flex flex-col min-h-0"
         style={{ border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+
         {/* Header */}
         <div className="px-5 py-3.5 flex items-center gap-3 flex-shrink-0" style={{ borderBottom: "1px solid #f0f0f0" }}>
           <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, #8b5cf6, #6d28d9)" }}>
-            TK
-          </div>
+            style={{ background: "linear-gradient(135deg, #8b5cf6, #6d28d9)" }}>TK</div>
           <div>
             <div className="flex items-center gap-2">
               <p className="text-sm font-bold" style={{ color: "#1a2333" }}>TKD Intelligence</p>
               <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                style={{ backgroundColor: "#f5f3ff", color: "#6d28d9" }}>Full Access</span>
+                style={{ backgroundColor: "#dcfce7", color: "#15803d" }}>Live Data</span>
             </div>
-            <p className="text-xs" style={{ color: "#6b7a90" }}>Connected to Ryder · Finn · Dispatch · Scout · Jobs</p>
+            <p className="text-xs" style={{ color: "#6b7a90" }}>$32,917 revenue · 204 jobs · 796 reviews · 4.9★ · Real HCP data</p>
           </div>
         </div>
 
@@ -147,7 +157,7 @@ export function AskPage() {
             <button key={q} onClick={() => send(q)} disabled={loading}
               className="text-xs font-medium px-3 py-1.5 rounded-full transition-colors disabled:opacity-50"
               style={{ border: "1px solid #ddd6fe", color: "#6d28d9", backgroundColor: "#f5f3ff" }}
-              data-testid={`chip-${q.toLowerCase().replace(/\s+/g, "-").replace(/[?']/g, "")}`}>
+              data-testid={`chip-${q.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>
               {q}
             </button>
           ))}
@@ -171,11 +181,11 @@ export function AskPage() {
           ))}
           {loading && (
             <div className="flex items-start gap-3">
-              <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-white text-xs font-bold"
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
                 style={{ background: "linear-gradient(135deg, #8b5cf6, #6d28d9)" }}>TK</div>
               <div className="rounded-2xl px-4 py-3 flex gap-1.5 items-center"
                 style={{ backgroundColor: "#f5f3ff", borderBottomLeftRadius: "4px" }}>
-                {[0, 1, 2].map((i) => (
+                {[0,1,2].map((i) => (
                   <span key={i} className="w-1.5 h-1.5 rounded-full animate-bounce"
                     style={{ backgroundColor: "#8b5cf6", animationDelay: `${i * 0.15}s` }} />
                 ))}

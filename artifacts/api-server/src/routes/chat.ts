@@ -2,6 +2,22 @@ import { Router, type IRouter, type Request, type Response } from "express";
 
 const router: IRouter = Router();
 
+/* ── Daily Ryder session counter (resets at midnight) ─────────── */
+let _counterDate = "";
+let _ryderSessions = 0;
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+function checkReset() {
+  const today = todayStr();
+  if (today !== _counterDate) { _counterDate = today; _ryderSessions = 0; }
+}
+
+/* ── GET /api/stats/today ─────────────────────────────────────── */
+router.get("/stats/today", (req: Request, res: Response) => {
+  checkReset();
+  res.json({ ryderSessions: _ryderSessions, date: _counterDate || todayStr() });
+});
+
+/* ── POST /api/chat ───────────────────────────────────────────── */
 router.post("/chat", async (req: Request, res: Response) => {
   const apiKey = process.env.ANTHROPIC_KEY;
   if (!apiKey) {
@@ -18,6 +34,10 @@ router.post("/chat", async (req: Request, res: Response) => {
     res.status(400).json({ error: "messages array is required." });
     return;
   }
+
+  /* Count every chat call as a Ryder session */
+  checkReset();
+  _ryderSessions++;
 
   try {
     const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {

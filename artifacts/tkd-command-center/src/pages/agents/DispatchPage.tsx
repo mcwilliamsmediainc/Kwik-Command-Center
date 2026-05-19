@@ -387,7 +387,8 @@ export function DispatchPage() {
 {`CUSTOMER: [Name]
 ISSUE: [Category — detail]
 PHONE: [Number]
-URGENT: [Yes / No]`}
+URGENT: [Yes / No]
+TECH: [Isiah / Peyton / Anthony / Evan]`}
             </pre>
           </div>
         </div>

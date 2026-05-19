@@ -1,0 +1,92 @@
+Connect all remaining pages to real data. 
+Do them one at a time, starting with Dashboard.
+
+DASHBOARD — Update with real data:
+1. KPI cards pull from /api/hcp/financials 
+   and /api/scout/reviews:
+   - Revenue MTD: real $32,917
+   - Google Reviews: real 796 at 4.9★
+   - Ryder Deflections: keep as live counter 
+     (increment each time Ryder chat is used)
+   - Open Jobs: real count from HouseCall Pro 
+     jobs with status scheduled or in_progress
+
+2. Scout Alerts — make these data-driven:
+   - BBB alert: always show (still not accredited)
+   - Review alert: pull most recent unresponded 
+     review from Google Places
+   - Yelp alert: always show (duplicate listings)
+   - Slow period: calculate from HouseCall Pro 
+     job volume trends — if next 2 weeks have 
+     fewer bookings than current pace, show alert
+
+3. Agent status cards — show real live stats:
+   - Ryder: count of API calls made today
+   - Dispatch: count of WhatsApp messages (keep mocked)
+   - Ledger: next payroll date calculated from real data
+   - Scout: real review count from Google
+
+DISPATCH — Connect to real data:
+1. Keep WhatsApp threads as mocked for now 
+   (WhatsApp Business API is Sprint 3)
+2. But add a real "Today's Activity" counter 
+   that shows how many Ryder chat sessions 
+   happened today
+3. Update the call center message template 
+   card to show real technician names from 
+   HouseCall Pro (Isiah, Peyton, Anthony, Evan)
+4. Update the 4 KPI cards to show real 
+   technician names in the routing stats
+
+ASK — Update orchestrator context:
+1. Update Ask agent system prompt with all 
+   real data we now have:
+   - Real revenue: $32,917
+   - Real jobs: 204 this month
+   - Real customers: 3,770
+   - Real reviews: 796 at 4.9 stars
+   - Real lead sources from HouseCall Pro
+   - Real technicians: Isiah Ervin, Peyton Mueters, 
+     Anthony Rodgers, Evan Hoover
+   - Real top service: Air Duct at $11,924
+2. Add these quick action prompts:
+   "How are we doing this month?"
+   "What's our biggest growth opportunity?"
+   "Which technician is performing best?"
+   "What should I focus on this week?"
+   "How do our lead sources compare?"
+
+REACTIVATION — Connect to real HouseCall Pro data:
+1. Fetch real customers from /api/hcp/customers 
+   who haven't had a job in 12+ months
+2. Sort by lifetime value highest first
+3. Show real customer names, last job date, 
+   lifetime value, and job count
+4. Populate the win-back queue with top 10 
+   dormant customers by LTV
+5. For open quotes, fetch from 
+   /api/hcp/estimates with status pending
+6. Show real estimate amounts and days since sent
+
+TEAM AND PAY — Connect to real HouseCall Pro data:
+1. Fetch real employees from 
+   https://api.housecallpro.com/employees
+2. Show real technician cards with:
+   - Real names (Isiah, Peyton, Anthony, Evan)
+   - Real job counts from this month
+   - Calculated pay at $40/job rate
+   - Avatar initials from real names
+3. Update the total payroll to match 
+   Ledger real number of $8,160
+4. Keep the Process Payroll button
+
+UNIFIED INBOX — Update with real context:
+1. Keep WhatsApp threads mocked (Sprint 3)
+2. But update customer history shown in thread 
+   headers to use real data — when Sandra 
+   Williams thread is open, show her real 
+   job count and LTV from HouseCall Pro
+3. Update the speed-to-lead KPI to track 
+   real Ryder response times
+
+After all pages are updated, republish the app.
