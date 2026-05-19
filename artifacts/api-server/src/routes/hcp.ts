@@ -142,12 +142,23 @@ function resolveAmount(j: HcpJob): number | null {
   return null;
 }
 
+const CT = "America/Chicago";
+
+function fmtCT(iso: string) {
+  return new Date(iso).toLocaleTimeString("en-US", {
+    timeZone: CT,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 function normalizeJob(j: HcpJob) {
   const tech = j.assigned_employees?.[0];
   const scheduledStart = j.schedule?.scheduled_start;
-  const timeStr = scheduledStart
-    ? new Date(scheduledStart).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
-    : "";
+  const scheduledEnd   = j.schedule?.scheduled_end;
+  const timeStr    = scheduledStart ? fmtCT(scheduledStart) : "";
+  const timeEndStr = scheduledEnd   ? fmtCT(scheduledEnd)   : "";
   const scheduledDate = scheduledStart ? new Date(scheduledStart).toISOString().slice(0, 10) : "";
 
   return {
@@ -164,6 +175,7 @@ function normalizeJob(j: HcpJob) {
     techColor: tech?.color_hex ? `#${tech.color_hex}` : "#6b7a90",
     location: [j.address?.street, j.address?.city].filter(Boolean).join(", "),
     time: timeStr,
+    timeEnd: timeEndStr,
     scheduledDate,
     scheduledStart: scheduledStart ?? "",
   };

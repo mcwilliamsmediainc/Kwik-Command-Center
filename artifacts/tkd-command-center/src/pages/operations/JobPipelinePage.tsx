@@ -16,6 +16,7 @@ interface HcpJob {
   techColor: string;
   location: string;
   time: string;
+  timeEnd: string;
   scheduledDate: string;
 }
 
@@ -180,9 +181,17 @@ export function JobPipelinePage() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: "1px solid #f0f0f0", backgroundColor: "#fafafa" }}>
-                  {["Time", "Customer", "Service", "Technician", "Location", "Value", "Status"].map((h) => (
-                    <th key={h} className="px-5 py-3 text-left text-xs font-semibold uppercase"
-                      style={{ color: "#6b7a90", letterSpacing: "0.5px" }}>{h}</th>
+                  {[
+                    { label: "Time",       style: { minWidth: 120 } },
+                    { label: "Customer",   style: { minWidth: 140 } },
+                    { label: "Service",    style: { minWidth: 160 } },
+                    { label: "Technician", style: { minWidth: 120 } },
+                    { label: "Location",   style: { minWidth: 140 } },
+                    { label: "Value",      style: { minWidth: 90  } },
+                    { label: "Status",     style: { minWidth: 110 } },
+                  ].map(({ label, style }) => (
+                    <th key={label} className="px-5 py-3 text-left text-xs font-semibold uppercase"
+                      style={{ color: "#6b7a90", letterSpacing: "0.5px", ...style }}>{label}</th>
                   ))}
                 </tr>
               </thead>
@@ -197,18 +206,21 @@ export function JobPipelinePage() {
                 {jobs.map((j) => {
                   const sc = STATUS_CONFIG[j.status];
                   const Icon = sc.icon;
+                  const timeDisplay = j.time
+                    ? (j.timeEnd ? `${j.time} – ${j.timeEnd}` : j.time)
+                    : "—";
                   return (
                     <tr key={j.id} style={{ borderBottom: "1px solid #f5f5f5" }}>
-                      <td className="px-5 py-3.5 text-sm font-semibold tabular-nums whitespace-nowrap" style={{ color: "#1a2333" }}>
-                        {j.time || "—"}
+                      <td className="px-5 py-3.5 text-xs font-semibold tabular-nums whitespace-nowrap" style={{ color: "#1a2333" }}>
+                        {timeDisplay}
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="text-sm font-semibold" style={{ color: "#1a2333" }}>{j.customer}</span>
+                        <span className="block text-sm font-semibold" style={{ color: "#1a2333" }}>{j.customer}</span>
                         {j.invoiceNumber && (
-                          <span className="block text-[11px]" style={{ color: "#6b7a90" }}>#{j.invoiceNumber}</span>
+                          <span className="block text-[11px] mt-0.5" style={{ color: "#9ca3af" }}>#{j.invoiceNumber}</span>
                         )}
                       </td>
-                      <td className="px-5 py-3.5 text-xs max-w-[180px]" style={{ color: "#6b7a90" }}>
+                      <td className="px-5 py-3.5 text-xs" style={{ color: "#6b7a90", maxWidth: 180 }}>
                         <span className="line-clamp-2">{j.service || "—"}</span>
                       </td>
                       <td className="px-5 py-3.5">
@@ -221,8 +233,8 @@ export function JobPipelinePage() {
                         </div>
                       </td>
                       <td className="px-5 py-3.5 text-xs" style={{ color: "#6b7a90" }}>{j.location || "—"}</td>
-                      <td className="px-5 py-3.5 text-sm font-bold whitespace-nowrap">
-                        {(() => { const f = fmt(j.totalAmount); return <span style={{ color: f.pending ? "#9ca3af" : "#1a2333", fontWeight: f.pending ? 400 : 700, fontSize: f.pending ? "11px" : undefined }}>{f.text}</span>; })()}
+                      <td className="px-5 py-3.5 whitespace-nowrap" style={{ minWidth: 90 }}>
+                        {(() => { const f = fmt(j.totalAmount); return <span style={{ color: f.pending ? "#9ca3af" : "#1a2333", fontWeight: f.pending ? 400 : 700, fontSize: f.pending ? "11px" : "13px" }}>{f.text}</span>; })()}
                       </td>
                       <td className="px-5 py-3.5">
                         <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap"
