@@ -1,4 +1,4 @@
-import { Bell, Search } from "lucide-react";
+import { Bell, Search, Menu } from "lucide-react";
 import { useLocation } from "wouter";
 
 const PAGE_TITLES: Record<string, string> = {
@@ -15,20 +15,33 @@ const PAGE_TITLES: Record<string, string> = {
   "/operations/team": "Team & Pay",
 };
 
-export function TopBar() {
+interface TopBarProps {
+  onMenuClick: () => void;
+}
+
+export function TopBar({ onMenuClick }: TopBarProps) {
   const [location] = useLocation();
   const title = PAGE_TITLES[location] || "Command Center";
 
   return (
-    <div 
-      className="h-[56px] bg-white border-b border-[#e8eaed] flex items-center justify-between px-6 shrink-0 sticky top-0 z-10"
+    <div
+      className="h-[56px] bg-white border-b border-[#e8eaed] flex items-center justify-between px-4 md:px-6 shrink-0 sticky top-0 z-10"
       style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.02)" }}
     >
-      <div>
+      <div className="flex items-center gap-3">
+        {/* Hamburger — visible on mobile only */}
+        <button
+          className="md:hidden flex items-center justify-center w-9 h-9 rounded-md text-[#6b7a90] hover:text-[#1a2333] hover:bg-gray-100 transition-colors"
+          onClick={onMenuClick}
+          aria-label="Open menu"
+          data-testid="button-hamburger-menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
         <h1 className="font-semibold text-lg" style={{ color: "#1a2333" }}>{title}</h1>
       </div>
-      
-      <div className="flex items-center gap-4">
+
+      <div className="flex items-center gap-3 md:gap-4">
         <button className="text-[#6b7a90] hover:text-[#1a2333] transition-colors p-1.5 rounded-md hover:bg-gray-100">
           <Search className="w-5 h-5" />
         </button>
@@ -36,9 +49,9 @@ export function TopBar() {
           <Bell className="w-5 h-5" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#3db54a] rounded-full border border-white"></span>
         </button>
-        
-        <div className="h-6 w-[1px] bg-gray-200 mx-1"></div>
-        
+
+        <div className="h-6 w-[1px] bg-gray-200 mx-0.5 hidden sm:block"></div>
+
         <button className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-[#2b4fac] font-medium text-sm border border-blue-100 hover:bg-blue-100 transition-colors">
           AD
         </button>

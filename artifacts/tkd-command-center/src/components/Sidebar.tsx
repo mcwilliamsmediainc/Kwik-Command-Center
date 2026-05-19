@@ -53,7 +53,11 @@ const NAV_SECTIONS = [
   },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  onClose: () => void;
+}
+
+export function Sidebar({ onClose }: SidebarProps) {
   const [location] = useLocation();
 
   return (
@@ -69,7 +73,7 @@ export function Sidebar() {
         <img
           src="/kwikdry-logo.png"
           alt="Kwik Dry"
-          style={{ maxWidth: 160, height: "auto", display: "block", margin: "0 auto", filter: "brightness(1.1) contrast(1.05)" }}
+          style={{ maxWidth: 140, height: "auto", display: "block", margin: "0 auto", filter: "brightness(1.1) contrast(1.05)" }}
         />
         <span
           style={{
@@ -104,7 +108,9 @@ export function Sidebar() {
                 return (
                   <li key={item.name}>
                     <Link href={item.href}>
+                      {/* Close sidebar on mobile after tapping a nav item */}
                       <span
+                        onClick={onClose}
                         className={`relative flex items-center gap-3 w-full px-2 py-[7px] rounded-md text-sm cursor-pointer transition-colors group ${
                           isActive ? "tkd-nav-active" : "tkd-nav-inactive"
                         }`}

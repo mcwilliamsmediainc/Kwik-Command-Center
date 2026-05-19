@@ -138,7 +138,7 @@ export function RyderPage() {
   }
 
   return (
-    <div className="flex gap-5 h-[calc(100vh-108px)]">
+    <div className="flex flex-col md:flex-row gap-5 h-[calc(100vh-108px)] overflow-y-auto md:overflow-hidden">
       {/* Chat panel */}
       <div
         className="flex-1 flex flex-col bg-white rounded-lg overflow-hidden min-w-0"
@@ -247,14 +247,14 @@ export function RyderPage() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask Ryder something..."
             disabled={loading}
-            className="flex-1 text-sm px-4 py-2.5 rounded-full outline-none disabled:opacity-60"
+            className="flex-1 text-sm px-4 rounded-full outline-none disabled:opacity-60 min-h-[44px]"
             style={{ border: "1px solid #e4e8f0", backgroundColor: "#f9fafb", color: "#1a2333" }}
             data-testid="input-ryder-chat"
           />
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-opacity disabled:opacity-40"
+            className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-opacity disabled:opacity-40"
             style={{ backgroundColor: "#2b4fac" }}
             data-testid="button-send-message"
           >
@@ -264,7 +264,7 @@ export function RyderPage() {
       </div>
 
       {/* Right panel */}
-      <div className="w-[260px] flex-shrink-0 flex flex-col gap-4 overflow-y-auto">
+      <div className="w-full md:w-[260px] flex-shrink-0 flex flex-col gap-4 overflow-y-auto">
         {/* Today's Stats */}
         <div
           className="bg-white rounded-lg overflow-hidden"

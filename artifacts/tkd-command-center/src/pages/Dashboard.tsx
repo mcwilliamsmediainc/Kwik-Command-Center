@@ -105,7 +105,7 @@ export function Dashboard() {
     <div className="space-y-5">
 
       {/* ── KPI row ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           title="Revenue MTD"
           value={loading ? "—" : fmt$(fin?.totalRevenue ?? 0)}
@@ -172,7 +172,7 @@ export function Dashboard() {
           <h2 className="text-sm font-semibold" style={{ color: "#1a2333" }}>Agent Status</h2>
           <span className="text-xs" style={{ color: "#6b7a90" }}>Live counters</span>
         </div>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {agentStats.map((a) => (
             <div key={a.label} className="bg-white rounded-lg px-4 py-3 flex items-center gap-3"
               style={{ border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
@@ -198,8 +198,8 @@ export function Dashboard() {
               View All <ExternalLink className="w-3 h-3" />
             </button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
+          <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
+            <table className="w-full text-sm text-left min-w-[520px]">
               <thead style={{ backgroundColor: "#fafafa", borderBottom: "1px solid #f0f0f0" }}>
                 <tr>
                   {["Job #","Customer","Service","Status","Date"].map(h => (

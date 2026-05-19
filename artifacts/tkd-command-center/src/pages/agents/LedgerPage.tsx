@@ -334,7 +334,7 @@ export function LedgerPage() {
         </div>
 
         {/* ── Two-column layout ── */}
-        <div className="flex gap-4 flex-1 min-h-0">
+        <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0">
 
           {/* Left — Finn chat */}
           <div
@@ -412,13 +412,13 @@ export function LedgerPage() {
                 type="text" value={input} onChange={e => setInput(e.target.value)}
                 placeholder="Ask Finn about your finances…"
                 disabled={chatLoading}
-                className="flex-1 text-sm px-4 py-2.5 rounded-full outline-none disabled:opacity-60"
+                className="flex-1 text-sm px-4 rounded-full outline-none disabled:opacity-60 min-h-[44px]"
                 style={{ border: "1px solid #e4e8f0", backgroundColor: "#f9fafb", color: "#1a2333" }}
                 data-testid="input-finn-chat"
               />
               <button
                 type="submit" disabled={chatLoading || !input.trim()}
-                className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 disabled:opacity-40"
+                className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 disabled:opacity-40"
                 style={{ backgroundColor: "#3db54a" }}
                 data-testid="button-finn-send"
               >
@@ -428,7 +428,7 @@ export function LedgerPage() {
           </div>
 
           {/* Right — P&L + Payroll stacked */}
-          <div className="w-[280px] flex-shrink-0 flex flex-col gap-4 min-h-0 overflow-y-auto">
+          <div className="w-full md:w-[280px] flex-shrink-0 flex flex-col gap-4 min-h-0 overflow-y-auto">
 
             {/* P&L Summary */}
             <div className="bg-white rounded-lg overflow-hidden flex-shrink-0" style={{ border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>

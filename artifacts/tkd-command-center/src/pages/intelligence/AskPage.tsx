@@ -200,11 +200,11 @@ export function AskPage() {
           className="flex items-center gap-3 px-4 py-3 flex-shrink-0" style={{ borderTop: "1px solid #f0f0f0" }}>
           <input type="text" value={input} onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about your business..." disabled={loading}
-            className="flex-1 text-sm px-4 py-2.5 rounded-full outline-none disabled:opacity-60"
+            className="flex-1 text-sm px-4 rounded-full outline-none disabled:opacity-60 min-h-[44px]"
             style={{ border: "1px solid #e4e8f0", backgroundColor: "#f9fafb", color: "#1a2333" }}
             data-testid="input-ask-chat" />
           <button type="submit" disabled={loading || !input.trim()}
-            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 disabled:opacity-40"
+            className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 disabled:opacity-40"
             style={{ background: "linear-gradient(135deg, #8b5cf6, #6d28d9)" }}
             data-testid="button-ask-send">
             <Send className="w-4 h-4 text-white" />
