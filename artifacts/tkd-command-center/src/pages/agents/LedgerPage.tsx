@@ -50,7 +50,7 @@ CURRENT FINANCIALS (${data.month}) — LIVE FROM HOUSECALL PRO:
   Revenue by service:
 ${catLines}
 - Paid Invoices: $${data.paidTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })} (${data.paidCount} invoices)
-- Outstanding Balance: $${data.outstandingTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })} (${data.outstandingInvoices.length} unpaid invoices)
+- Outstanding Balance: $${data.outstandingTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })} (${(data.outstandingInvoices ?? []).length} unpaid invoices)
 - Avg Job Value: $${data.avgJobValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
 
 EXPENSES (QuickBooks — estimated):
@@ -267,9 +267,9 @@ export function LedgerPage() {
     },
     {
       label: "Outstanding", value: dataLoading ? "—" : fmt$(outstanding),
-      sub: dataLoading ? "loading…" : `${data?.outstandingInvoices.length ?? 0} unpaid invoices · click to view`,
+      sub: dataLoading ? "loading…" : `${(data?.outstandingInvoices ?? []).length} unpaid invoices · click to view`,
       color: "#d97706", icon: Clock, positive: null as boolean | null,
-      onClick: data && data.outstandingInvoices.length > 0 ? () => setShowOutstanding(true) : undefined,
+      onClick: data && (data.outstandingInvoices ?? []).length > 0 ? () => setShowOutstanding(true) : undefined,
     },
   ];
 
@@ -291,7 +291,7 @@ export function LedgerPage() {
     <>
       {showOutstanding && data && (
         <OutstandingModal
-          invoices={data.outstandingInvoices}
+          invoices={data.outstandingInvoices ?? []}
           total={outstanding}
           onClose={() => setShowOutstanding(false)}
         />
