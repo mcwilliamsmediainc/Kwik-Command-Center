@@ -46,7 +46,8 @@ function resolveAmount(job: Record<string, unknown>): number {
 
 /* ── Google Places helpers ────────────────────────────────────── */
 interface PlacesTextSearchResult {
-  results?: Array<{ place_id: string }>;
+  candidates?: Array<{ place_id: string }>;
+  results?: Array<{ place_id: string }>; // textsearch fallback
   status?: string;
 }
 interface PlacesDetailsResult {
@@ -69,15 +70,18 @@ async function findPlaceId(apiKey: string): Promise<string> {
   const cached = getCached<string>("scout:place_id");
   if (cached) return cached;
 
-  const url = new URL(`${PLACES_BASE}/textsearch/json`);
-  url.searchParams.set("query", "Tulsa Kwik Dry Total Cleaning Tulsa OK");
+  const url = new URL(`${PLACES_BASE}/findplacefromtext/json`);
+  url.searchParams.set("input", "Tulsa Kwik Dry Total Cleaning Tulsa OK");
+  url.searchParams.set("inputtype", "textquery");
+  url.searchParams.set("fields", "place_id,name,rating,user_ratings_total");
   url.searchParams.set("key", apiKey);
 
   const res = await fetch(url.toString());
   const data = await res.json() as PlacesTextSearchResult;
-  if (!data.results?.length) throw new Error(`Places text search returned no results (status: ${data.status})`);
+  const hits = data.candidates ?? data.results ?? [];
+  if (!hits.length) throw new Error(`Places findplacefromtext returned no candidates (status: ${data.status})`);
 
-  const placeId = data.results[0].place_id;
+  const placeId = hits[0].place_id;
   setCached("scout:place_id", placeId, 24 * 60 * 60 * 1000); // cache place_id for 24 h
   return placeId;
 }

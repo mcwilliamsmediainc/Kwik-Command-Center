@@ -145,7 +145,7 @@ export function ScoutPage() {
   const totalReviews = reviewsData?.totalReviews ?? null;
   // Show reviews that don't have a response (hasResponse always false from Places API
   // since it doesn't expose owner responses — show 3 most recent)
-  const displayReviews = (reviewsData?.reviews ?? []).slice(0, 3);
+  const displayReviews = (reviewsData?.reviews ?? []).slice(0, 5);
   const sources = sourcesData?.sources ?? [];
 
   /* ── Google row for Platform Health ── */
