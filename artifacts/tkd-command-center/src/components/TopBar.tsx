@@ -10,6 +10,8 @@ const STATIC_PAGE_TITLES: Record<string, string> = {
   "/operations/jobs": "Job Pipeline",
   "/operations/team": "Team & Pay",
   "/settings": "Settings",
+  "/agents/sage":  "Sage",
+  "/agents/blaze": "Blaze",
 };
 
 interface TopBarProps {

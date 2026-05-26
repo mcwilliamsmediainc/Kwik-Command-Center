@@ -6,6 +6,8 @@ import {
   Radio,
   TrendingUp,
   BarChart2,
+  Search,
+  Flame,
   Mail,
   Sparkles,
   Users,
@@ -29,6 +31,8 @@ const NAV_SECTIONS = [
       { name: "Dispatch", href: "/agents/dispatch", icon: Radio, sub: "Call Center" },
       { name: "Ledger", href: "/agents/ledger", icon: TrendingUp, sub: "Finance & QB" },
       { name: "Scout", href: "/agents/scout", icon: BarChart2, sub: "Marketing" },
+      { name: "Sage",  href: "/agents/sage",  icon: Search,    sub: "Local SEO" },
+      { name: "Blaze", href: "/agents/blaze", icon: Flame,     sub: "Social Media" },
     ],
   },
   {

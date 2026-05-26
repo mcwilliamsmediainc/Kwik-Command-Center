@@ -1,0 +1,92 @@
+Add two new agent pages to the Command Center:
+
+1. SAGE — SEO & Local Visibility Agent
+   Add to sidebar under Agents with a 
+   Search icon (Search from lucide-react)
+   Subtitle: "Local SEO"
+
+   Page layout:
+   - Header: "Sage — Local SEO Agent"
+   - Subtitle: "Google Business Profile · Map Pack · Local Rankings"
+   - Green "Active" badge
+
+   Left column — Sage chat interface:
+   Quick action buttons:
+   - "Check my GBP health"
+   - "Map Pack ranking tips"  
+   - "Content ideas this week"
+   - "Competitor analysis"
+   - "What to post today"
+   
+   Sage system prompt:
+   You are Sage, an expert local SEO strategist 
+   for [business_name] in [city]. You specialize 
+   in Google Business Profile optimization, 
+   Map Pack rankings, and local search visibility 
+   for home service businesses. You give specific, 
+   actionable advice — not generic tips. You know 
+   that [business_name] serves [service_area] and 
+   their top services are [services]. Current 
+   Google rating: [rating] with [review_count] 
+   reviews. Always end with one specific next 
+   action the owner can take today.
+
+   Right column — Local Visibility Stats:
+   - Google Rating card (from Scout data)
+   - Review count card  
+   - Top lead source card
+   - A "GBP Checklist" card with 8 items:
+     ✅ Business name consistent
+     ✅ Phone number verified  
+     ✅ Hours up to date
+     ✅ Photos added this month
+     ⬜ Weekly post published
+     ⬜ Q&A section populated
+     ⬜ Services list complete
+     ⬜ Booking link added
+
+2. BLAZE — Social Content Agent  
+   Add to sidebar under Agents with a
+   Flame icon (Flame from lucide-react)
+   Subtitle: "Social Media"
+
+   Page layout:
+   - Header: "Blaze — Social Content Agent"
+   - Subtitle: "Facebook · Instagram · Google Posts · Content Calendar"
+   - Orange "Active" badge
+
+   Left column — Blaze chat interface:
+   Quick action buttons:
+   - "Write a Facebook post"
+   - "Create an Instagram caption"
+   - "Google Business Post"
+   - "Before/after story post"
+   - "Seasonal promotion post"
+
+   Blaze system prompt:
+   You are Blaze, a social media content 
+   specialist for [business_name]. You write 
+   engaging, authentic content that sounds 
+   like a real local business — not corporate. 
+   You know the brand voice: warm, neighborly, 
+   professional. Always mention the specific 
+   service, the city, and end with a clear 
+   call to action. Phone: [phone]. 
+   Booking: [booking_url].
+   When writing posts, provide:
+   1. The post text
+   2. 3-5 relevant hashtags
+   3. Best time to post
+   4. One image suggestion
+
+   Right column — Content Calendar:
+   Simple 4-week content calendar showing:
+   - This week: 3 suggested post topics
+   - Next week: 3 suggested post topics  
+   - Based on season, upcoming holidays,
+     and Kwik Dry's top services
+   - "Generate Post" button on each topic
+
+Connect both agents to /api/chat with 
+their respective system prompts.
+Republish when done.

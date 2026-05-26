@@ -12,6 +12,8 @@ import { RyderPage } from "@/pages/agents/RyderPage";
 import { DispatchPage } from "@/pages/agents/DispatchPage";
 import { LedgerPage } from "@/pages/agents/LedgerPage";
 import { ScoutPage } from "@/pages/agents/ScoutPage";
+import { SagePage } from "@/pages/agents/SagePage";
+import { BlazePage } from "@/pages/agents/BlazePage";
 import { InboxPage } from "@/pages/InboxPage";
 import { AskPage } from "@/pages/intelligence/AskPage";
 import { CustomersPage } from "@/pages/intelligence/CustomersPage";
@@ -31,6 +33,8 @@ function Router() {
         <Route path="/agents/dispatch" component={DispatchPage} />
         <Route path="/agents/ledger" component={LedgerPage} />
         <Route path="/agents/scout" component={ScoutPage} />
+        <Route path="/agents/sage"  component={SagePage} />
+        <Route path="/agents/blaze" component={BlazePage} />
         <Route path="/inbox" component={InboxPage} />
         <Route path="/intelligence/ask" component={AskPage} />
         <Route path="/intelligence/customers" component={CustomersPage} />
