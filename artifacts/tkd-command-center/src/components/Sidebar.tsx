@@ -15,6 +15,7 @@ import {
   ClipboardList,
   UserCheck,
   Settings,
+  Sparkles as SparklesIcon,
 } from "lucide-react";
 
 const NAV_SECTIONS = [
@@ -59,6 +60,7 @@ const NAV_SECTIONS = [
   {
     title: "PLATFORM",
     items: [
+      { name: "Demo Mode", href: "/demo", icon: SparklesIcon, sub: "Live rebrand for sales" },
       { name: "Settings", href: "/settings", icon: Settings, sub: "Business profile" },
     ],
   },
