@@ -76,98 +76,73 @@ function twilioHelpFor(code: number | undefined): string {
 }
 
 router.post("/dispatch/send", async (req: Request, res: Response) => {
-  const { to: toRaw, message } = req.body as { to?: string; message?: string };
-
-  /* ── TWILIO SEND DEBUG (visible in deployment logs as structured pino entries) ── */
-  req.log.info(
-    {
-      toRaw,
-      messagePreview: message ? message.slice(0, 80) : null,
-      accountSidPrefix: process.env.TWILIO_ACCOUNT_SID?.slice(0, 10),
-      authTokenSet: !!process.env.TWILIO_AUTH_TOKEN,
-      whatsappNumber: process.env.TWILIO_WHATSAPP_NUMBER,
-    },
-    "=== TWILIO SEND DEBUG ==="
-  );
-
-  if (!toRaw || !message) {
-    res.status(400).json({
-      success: false,
-      error: "to and message are required",
-      help: 'Request body must include both "to" and "message".',
-    });
-    return;
-  }
-
-  const sid   = process.env.TWILIO_ACCOUNT_SID;
-  const token = process.env.TWILIO_AUTH_TOKEN;
-  const fromRaw = process.env.TWILIO_WHATSAPP_NUMBER;
-
-  if (!sid || !token || !fromRaw) {
-    res.status(503).json({
-      success: false,
-      error: "Twilio credentials not configured",
-      help: "Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_WHATSAPP_NUMBER in Secrets.",
-    });
-    return;
-  }
-
-  /* ── Format "to": strip whatsapp:, strip spaces/dashes/parens, ensure +, re-prefix ── */
-  let toNumber = toRaw.replace("whatsapp:", "");
-  toNumber = toNumber.replace(/[\s\-()]/g, "");
-  if (!toNumber.startsWith("+")) toNumber = "+" + toNumber;
-  const formattedTo = "whatsapp:" + toNumber;
-
-  /* ── Format "from": ensure whatsapp: prefix ── */
-  let fromNumber = fromRaw;
-  if (!fromNumber.startsWith("whatsapp:")) fromNumber = "whatsapp:" + fromNumber;
-
-  req.log.info({ formattedTo, fromNumber }, "Twilio formatted numbers");
-
   try {
-    const client = twilio(sid, token);
-    const result = await client.messages.create({
-      from: fromNumber,
-      to: formattedTo,
-      body: message,
+    console.log("DISPATCH SEND CALLED");
+    console.log("Body:", JSON.stringify(req.body));
+
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER;
+
+    console.log("SID exists:", !!accountSid);
+    console.log("Token exists:", !!authToken);
+    console.log("From:", fromNumber);
+    console.log("To raw:", req.body.to);
+
+    if (!accountSid || !authToken) {
+      res.status(500).json({
+        success: false,
+        error: "Twilio credentials missing from secrets",
+        help: "Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_WHATSAPP_NUMBER in Secrets.",
+      });
+      return;
+    }
+
+    const client = twilio(accountSid, authToken);
+
+    let to: string = req.body.to || "";
+    to = to.replace("whatsapp:", "");
+    to = to.replace(/[\s\-()]/g, "");
+    if (!to.startsWith("+")) to = "+" + to;
+    const toNumberPlain = to;
+    to = "whatsapp:" + to;
+
+    let from: string = fromNumber || "";
+    if (!from.startsWith("whatsapp:")) from = "whatsapp:" + from;
+
+    console.log("Sending from:", from);
+    console.log("Sending to:", to);
+    console.log("Message:", req.body.message);
+
+    const message = await client.messages.create({
+      from: from,
+      to: to,
+      body: req.body.message || "Test message from Kwik Dry",
     });
 
     /* Also store the outbound message locally so it appears in the thread */
     messages.unshift({
-      id: result.sid,
-      from: toNumber,
+      id: message.sid,
+      from: toNumberPlain,
       name: "You",
-      body: message,
+      body: req.body.message || "Test message from Kwik Dry",
       timestamp: new Date().toISOString(),
       status: "read",
     });
 
-    req.log.info({ messageSid: result.sid }, "Twilio message SID");
-    res.json({ success: true, sid: result.sid });
+    console.log("SUCCESS - SID:", message.sid);
+    res.json({ success: true, sid: message.sid });
   } catch (err) {
-    const e = err as {
-      code?: number;
-      status?: number;
-      message?: string;
-      moreInfo?: string;
-    };
-    req.log.error(
-      {
-        twilioCode: e.code,
-        twilioMessage: e.message,
-        twilioMoreInfo: e.moreInfo,
-        formattedTo,
-        fromNumber,
-      },
-      "Twilio send failed"
-    );
+    const e = err as { code?: number; message?: string; moreInfo?: string };
+    console.log("TWILIO ERROR CAUGHT");
+    console.log("Error code:", e.code);
+    console.log("Error message:", e.message);
+    console.log("Error moreInfo:", e.moreInfo);
 
-    const errMsg = e.message ?? (err instanceof Error ? err.message : "Unknown error");
-    /* Use 400 for known recipient-opt-in errors so the UI treats them as user-fixable */
     const status = e.code === 63016 || e.code === 21608 ? 400 : 500;
     res.status(status).json({
       success: false,
-      error: errMsg,
+      error: e.message ?? (err instanceof Error ? err.message : "Unknown error"),
       code: e.code,
       help: twilioHelpFor(e.code),
     });
