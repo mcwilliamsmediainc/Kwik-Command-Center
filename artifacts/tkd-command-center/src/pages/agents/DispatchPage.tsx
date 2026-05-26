@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useProfile } from "@/context/ProfileContext";
+import { useToast } from "@/hooks/use-toast";
 import {
   MessageCircle,
   Mail,
@@ -237,6 +238,7 @@ export function DispatchPage() {
   const [inputText, setInputText]           = useState("");
   const [sendLoading, setSendLoading]       = useState(false);
   const [sendError, setSendError]           = useState("");
+  const { toast }                           = useToast();
 
   /* ── Poll /api/dispatch/messages every 10 s ─────────────────── */
   const fetchMessages = useCallback(async () => {
@@ -327,13 +329,35 @@ export function DispatchPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ to: activeThread.phone, message: text }),
       });
-      const data = await res.json() as { success?: boolean; error?: string };
-      if (!res.ok) throw new Error(data.error ?? "Send failed");
+      const data = await res.json() as {
+        success?: boolean;
+        error?: string;
+        code?: number;
+        help?: string;
+      };
+      if (!res.ok) {
+        const msg = data.error ?? "Send failed";
+        const help = data.help ?? "";
+        /* Loud red toast so a rep never silently misses a failed send. */
+        toast({
+          variant: "destructive",
+          title: data.code ? `WhatsApp send failed (Twilio ${data.code})` : "WhatsApp send failed",
+          description: help ? `${msg} — ${help}` : msg,
+        });
+        setSendError(help ? `${msg} — ${help}` : msg);
+        return;
+      }
       setInputText("");
       /* Refresh messages immediately after send */
       void fetchMessages();
     } catch (err) {
-      setSendError(err instanceof Error ? err.message : "Send failed");
+      const msg = err instanceof Error ? err.message : "Send failed";
+      toast({
+        variant: "destructive",
+        title: "WhatsApp send failed",
+        description: msg,
+      });
+      setSendError(msg);
     } finally {
       setSendLoading(false);
     }

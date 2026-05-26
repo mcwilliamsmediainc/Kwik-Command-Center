@@ -65,11 +65,37 @@ function toWhatsApp(raw: string): string {
   return `whatsapp:${withPlus}`;
 }
 
-router.post("/dispatch/send", async (req: Request, res: Response) => {
-  const { to, message } = req.body as { to?: string; message?: string };
+function twilioHelpFor(code: number | undefined): string {
+  if (code === 63016) {
+    return 'Recipient must join sandbox. Have them text "join [your-sandbox-word]" to +1 415 523 8886';
+  }
+  if (code === 21608) {
+    return "This number is not opted in to the WhatsApp sandbox";
+  }
+  return "Check Twilio console for details";
+}
 
-  if (!to || !message) {
-    res.status(400).json({ error: "to and message are required" });
+router.post("/dispatch/send", async (req: Request, res: Response) => {
+  const { to: toRaw, message } = req.body as { to?: string; message?: string };
+
+  /* ── TWILIO SEND DEBUG (visible in deployment logs as structured pino entries) ── */
+  req.log.info(
+    {
+      toRaw,
+      messagePreview: message ? message.slice(0, 80) : null,
+      accountSidPrefix: process.env.TWILIO_ACCOUNT_SID?.slice(0, 10),
+      authTokenSet: !!process.env.TWILIO_AUTH_TOKEN,
+      whatsappNumber: process.env.TWILIO_WHATSAPP_NUMBER,
+    },
+    "=== TWILIO SEND DEBUG ==="
+  );
+
+  if (!toRaw || !message) {
+    res.status(400).json({
+      success: false,
+      error: "to and message are required",
+      help: 'Request body must include both "to" and "message".',
+    });
     return;
   }
 
@@ -78,26 +104,30 @@ router.post("/dispatch/send", async (req: Request, res: Response) => {
   const fromRaw = process.env.TWILIO_WHATSAPP_NUMBER;
 
   if (!sid || !token || !fromRaw) {
-    res.status(503).json({ error: "Twilio credentials not configured (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER)" });
+    res.status(503).json({
+      success: false,
+      error: "Twilio credentials not configured",
+      help: "Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_WHATSAPP_NUMBER in Secrets.",
+    });
     return;
   }
 
-  const from = toWhatsApp(fromRaw);
-  const formattedTo = toWhatsApp(to);
+  /* ── Format "to": strip whatsapp:, strip spaces/dashes/parens, ensure +, re-prefix ── */
+  let toNumber = toRaw.replace("whatsapp:", "");
+  toNumber = toNumber.replace(/[\s\-()]/g, "");
+  if (!toNumber.startsWith("+")) toNumber = "+" + toNumber;
+  const formattedTo = "whatsapp:" + toNumber;
 
-  if (!fromRaw.startsWith("whatsapp:")) {
-    req.log.warn(
-      { fromRaw },
-      "TWILIO_WHATSAPP_NUMBER does not start with 'whatsapp:' prefix — auto-prepending. Recommend updating the secret to include the prefix."
-    );
-  }
+  /* ── Format "from": ensure whatsapp: prefix ── */
+  let fromNumber = fromRaw;
+  if (!fromNumber.startsWith("whatsapp:")) fromNumber = "whatsapp:" + fromNumber;
 
-  req.log.info({ to: formattedTo, from }, "WhatsApp send: preparing Twilio request");
+  req.log.info({ formattedTo, fromNumber }, "Twilio formatted numbers");
 
   try {
     const client = twilio(sid, token);
     const result = await client.messages.create({
-      from,
+      from: fromNumber,
       to: formattedTo,
       body: message,
     });
@@ -105,17 +135,16 @@ router.post("/dispatch/send", async (req: Request, res: Response) => {
     /* Also store the outbound message locally so it appears in the thread */
     messages.unshift({
       id: result.sid,
-      from: to,
+      from: toNumber,
       name: "You",
       body: message,
       timestamp: new Date().toISOString(),
       status: "read",
     });
 
-    req.log.info({ to: formattedTo, sid: result.sid }, "WhatsApp message sent");
+    req.log.info({ messageSid: result.sid }, "Twilio message SID");
     res.json({ success: true, sid: result.sid });
   } catch (err) {
-    /* Twilio errors expose code/status/moreInfo — surface them in logs */
     const e = err as {
       code?: number;
       status?: number;
@@ -125,27 +154,23 @@ router.post("/dispatch/send", async (req: Request, res: Response) => {
     req.log.error(
       {
         twilioCode: e.code,
-        twilioStatus: e.status,
+        twilioMessage: e.message,
         twilioMoreInfo: e.moreInfo,
-        message: e.message,
-        to: formattedTo,
-        from,
+        formattedTo,
+        fromNumber,
       },
-      "Failed to send WhatsApp message"
+      "Twilio send failed"
     );
 
-    /* Twilio 63016: recipient hasn't opted into the sandbox */
-    if (e.code === 63016) {
-      res.status(400).json({
-        error:
-          "Recipient must join sandbox first by texting 'join [code]' to +1 415 523 8886",
-        code: 63016,
-      });
-      return;
-    }
-
     const errMsg = e.message ?? (err instanceof Error ? err.message : "Unknown error");
-    res.status(500).json({ error: errMsg, code: e.code });
+    /* Use 400 for known recipient-opt-in errors so the UI treats them as user-fixable */
+    const status = e.code === 63016 || e.code === 21608 ? 400 : 500;
+    res.status(status).json({
+      success: false,
+      error: errMsg,
+      code: e.code,
+      help: twilioHelpFor(e.code),
+    });
   }
 });
 

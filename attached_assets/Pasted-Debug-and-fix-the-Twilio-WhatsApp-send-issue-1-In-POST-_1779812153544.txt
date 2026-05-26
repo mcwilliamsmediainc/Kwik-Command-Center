@@ -1,0 +1,74 @@
+Debug and fix the Twilio WhatsApp send issue.
+
+1. In POST /api/dispatch/send add this 
+   logging BEFORE the send attempt:
+   
+   console.log('=== TWILIO SEND DEBUG ===')
+   console.log('To (raw):', req.body.to)
+   console.log('Message:', req.body.message)
+   console.log('Account SID:', process.env.TWILIO_ACCOUNT_SID?.slice(0,10) + '...')
+   console.log('Auth Token exists:', !!process.env.TWILIO_AUTH_TOKEN)
+   console.log('WhatsApp Number:', process.env.TWILIO_WHATSAPP_NUMBER)
+
+2. Fix the "to" number formatting:
+   
+   let toNumber = req.body.to || ''
+   // Remove whatsapp: prefix if already there
+   toNumber = toNumber.replace('whatsapp:', '')
+   // Remove spaces, dashes, parentheses
+   toNumber = toNumber.replace(/[\s\-\(\)]/g, '')
+   // Add + if missing
+   if (!toNumber.startsWith('+')) {
+     toNumber = '+' + toNumber
+   }
+   // Add whatsapp: prefix
+   const formattedTo = 'whatsapp:' + toNumber
+   console.log('Formatted to:', formattedTo)
+
+3. Fix the "from" number formatting:
+   
+   let fromNumber = process.env.TWILIO_WHATSAPP_NUMBER || ''
+   if (!fromNumber.startsWith('whatsapp:')) {
+     fromNumber = 'whatsapp:' + fromNumber
+   }
+   console.log('Formatted from:', fromNumber)
+
+4. Wrap the Twilio send in a try/catch 
+   and return detailed error:
+   
+   try {
+     const message = await client.messages.create({
+       from: fromNumber,
+       to: formattedTo,
+       body: req.body.message
+     })
+     console.log('Message SID:', message.sid)
+     res.json({ success: true, sid: message.sid })
+   } catch (err) {
+     console.error('Twilio error code:', err.code)
+     console.error('Twilio error message:', err.message)
+     console.error('Twilio error details:', err.moreInfo)
+     res.status(500).json({ 
+       success: false, 
+       error: err.message,
+       code: err.code,
+       help: err.code === 63016 
+         ? 'Recipient must join sandbox. Have them text "join [your-sandbox-word]" to +1 415 523 8886'
+         : err.code === 21608
+         ? 'This number is not opted in to WhatsApp sandbox'
+         : 'Check Twilio console for details'
+     })
+   }
+
+5. In the Dispatch frontend, when the send 
+   call returns an error show it visibly:
+   - Red toast notification at top of page
+   - Show the error message and help text
+   - Do NOT silently fail
+
+6. Also check: in Replit Secrets confirm 
+   TWILIO_WHATSAPP_NUMBER is set to exactly:
+   whatsapp:+14155238886
+   (this is the standard Twilio sandbox number)
+
+7. Republish when done
