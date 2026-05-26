@@ -1,0 +1,65 @@
+{
+  "business_name": "Tulsa Kwik Dry Total Cleaning",
+  "business_short_name": "Kwik Dry",
+  "industry": "Carpet & Home Cleaning",
+  "naics_code": "561740",
+  "owner_name": "",
+
+  "phone": "(918) 238-2986",
+  "email": "tulsakwikdry@gmail.com",
+  "website": "https://tulsakwikdry.com",
+  "address": "2430 W New Orleans St, Broken Arrow OK 74011",
+
+  "primary_color": "#2b4fac",
+  "secondary_color": "#3db54a",
+  "logo_url": "/kwikdry-logo.png",
+  "app_name": "Command Center",
+
+  "service_area": [
+    "Tulsa", "Broken Arrow", "Bixby", "Jenks",
+    "Owasso", "Sand Springs", "Claremore", "Glenpool",
+    "Collinsville", "Catoosa", "Coweta", "Sapulpa",
+    "Skiatook", "Wagoner"
+  ],
+
+  "services": [
+    { "name": "Carpet Cleaning",   "min_price": 88,  "description": "First 2 rooms $88, whole house $188",       "active": true },
+    { "name": "Upholstery",        "min_price": 55,  "description": "Chair $55, sofa $95, sectional $145-$300",  "active": true },
+    { "name": "Air Duct Cleaning", "min_price": 199, "description": "Up to 10 vents $199",                       "active": true },
+    { "name": "Dryer Vent",        "min_price": 99,  "description": "Side wall $99, through roof $149",          "active": true },
+    { "name": "Tile & Grout",      "min_price": 99,  "description": "First 2 areas $99",                         "active": true },
+    { "name": "Mattress",          "min_price": 69,  "description": "Twin $69 to King $109",                     "active": true },
+    { "name": "Wood Floor",        "min_price": 150, "description": "$1.50/sq ft",                               "active": true }
+  ],
+
+  "technicians": [
+    { "name": "Isiah Ervin",     "pay_rate": 40 },
+    { "name": "Peyton Mueters",  "pay_rate": 40 },
+    { "name": "Anthony Rodgers", "pay_rate": 40 },
+    { "name": "Evan Hoover",     "pay_rate": 40 }
+  ],
+  "pay_rate_per_job": 40,
+
+  "booking_url": "https://book.housecallpro.com/book/Tulsa-Kwik-Dry",
+  "housecallpro_connected": true,
+  "quickbooks_connected": true,
+  "google_place_id": "",
+
+  "agents": {
+    "customer_faq": "Ryder",
+    "financial":    "Finn",
+    "dispatch":     "Dispatch",
+    "marketing":    "Scout",
+    "orchestrator": "Ask"
+  },
+
+  "hours": "Monday\u2013Saturday 7am\u201310pm",
+  "timezone": "America/Chicago",
+
+  "integrations": {
+    "housecallpro":  { "api_key": "",      "connected": true,  "last_sync": null },
+    "quickbooks":    {                     "connected": true,  "last_sync": null },
+    "whatsapp":      { "twilio_sid": "",   "twilio_token": "", "twilio_number": "", "last_sync": null },
+    "google_places": { "api_key": "",                          "last_sync": null }
+  }
+}
