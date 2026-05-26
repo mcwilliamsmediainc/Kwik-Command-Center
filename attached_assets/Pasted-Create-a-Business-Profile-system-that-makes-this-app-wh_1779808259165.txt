@@ -1,0 +1,101 @@
+Create a Business Profile system that makes 
+this app white-labelable for any home service 
+business.
+
+1. Create a new file: server/businessProfile.js
+   Export a default profile object with these fields:
+
+   {
+     // Identity
+     business_name: "Tulsa Kwik Dry Total Cleaning",
+     business_short_name: "Kwik Dry",
+     industry: "Carpet & Home Cleaning",
+     naics_code: "561740",
+     owner_name: "",
+     
+     // Contact
+     phone: "(918) 238-2986",
+     email: "tulsakwikdry@gmail.com",
+     website: "https://tulsakwikdry.com",
+     address: "2430 W New Orleans St, Broken Arrow OK 74011",
+     
+     // Branding
+     primary_color: "#2b4fac",
+     secondary_color: "#3db54a",
+     logo_url: "/kwikdry-logo.png",
+     app_name: "Command Center",
+     
+     // Service Area
+     service_area: [
+       "Tulsa", "Broken Arrow", "Bixby", "Jenks",
+       "Owasso", "Sand Springs", "Claremore", "Glenpool",
+       "Collinsville", "Catoosa", "Coweta", "Sapulpa",
+       "Skiatook", "Wagoner"
+     ],
+     
+     // Services & Pricing
+     services: [
+       { name: "Carpet Cleaning", min_price: 88, description: "First 2 rooms $88, whole house $188" },
+       { name: "Upholstery", min_price: 55, description: "Chair $55, sofa $95, sectional $145-$300" },
+       { name: "Air Duct Cleaning", min_price: 199, description: "Up to 10 vents $199" },
+       { name: "Dryer Vent", min_price: 99, description: "Side wall $99, through roof $149" },
+       { name: "Tile & Grout", min_price: 99, description: "First 2 areas $99" },
+       { name: "Mattress", min_price: 69, description: "Twin $69 to King $109" },
+       { name: "Wood Floor", min_price: 150, description: "$1.50/sq ft" },
+     ],
+     
+     // Team
+     technicians: ["Isiah Ervin", "Peyton Mueters", "Anthony Rodgers", "Evan Hoover"],
+     pay_rate_per_job: 40,
+     
+     // Integrations
+     booking_url: "https://book.housecallpro.com/book/Tulsa-Kwik-Dry",
+     housecallpro_connected: true,
+     quickbooks_connected: true,
+     google_place_id: "",
+     
+     // Agent Names
+     agents: {
+       customer_faq: "Ryder",
+       financial: "Finn",
+       dispatch: "Dispatch",
+       marketing: "Scout",
+       orchestrator: "Ask"
+     },
+     
+     // Business Hours
+     hours: "Monday–Saturday 7am–10pm",
+     timezone: "America/Chicago"
+   }
+
+2. Import businessProfile in server/index.js
+   and attach to res.locals so every route 
+   can access it:
+   app.use((req, res, next) => {
+     res.locals.profile = businessProfile
+     next()
+   })
+
+3. Add GET /api/profile endpoint that returns 
+   the full business profile to the frontend
+
+4. Update the frontend to fetch /api/profile 
+   on app load and store in React context:
+   - Create ProfileContext in src/context/ProfileContext.jsx
+   - Wrap App with ProfileProvider
+   - Replace ALL hardcoded "Tulsa Kwik Dry", 
+     "Kwik Dry", "(918) 238-2986", agent names, 
+     and brand colors with values from context
+
+5. Update all 5 agent system prompts to 
+   dynamically inject profile data:
+   - Business name, phone, services, pricing,
+     service area, technician names, booking URL
+   - No hardcoded business data in any system prompt
+
+6. Update the sidebar logo area to use 
+   profile.logo_url and profile.app_name
+
+7. Update the topbar to show profile.business_name
+
+Republish when done.

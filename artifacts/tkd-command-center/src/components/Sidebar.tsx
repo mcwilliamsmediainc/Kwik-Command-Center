@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { useProfile } from "@/context/ProfileContext";
 import {
   LayoutDashboard,
   MessageCircle,
@@ -59,6 +60,35 @@ interface SidebarProps {
 
 export function Sidebar({ onClose }: SidebarProps) {
   const [location] = useLocation();
+  const profile = useProfile();
+  const userInitials = profile.business_short_name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  const NAV_SECTIONS_DYN = NAV_SECTIONS.map((section) =>
+    section.title === "AGENTS"
+      ? {
+          ...section,
+          items: section.items.map((item) => {
+            if (item.href === "/agents/ryder")    return { ...item, name: profile.agents.customer_faq };
+            if (item.href === "/agents/dispatch") return { ...item, name: profile.agents.dispatch };
+            if (item.href === "/agents/ledger")   return { ...item, name: profile.agents.financial };
+            if (item.href === "/agents/scout")    return { ...item, name: profile.agents.marketing };
+            return item;
+          }),
+        }
+      : section.title === "INTELLIGENCE"
+      ? {
+          ...section,
+          items: section.items.map((item) =>
+            item.href === "/intelligence/ask" ? { ...item, name: profile.agents.orchestrator } : item
+          ),
+        }
+      : section
+  );
 
   return (
     <div
@@ -75,8 +105,8 @@ export function Sidebar({ onClose }: SidebarProps) {
         style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
       >
         <img
-          src="/kwikdry-logo.png"
-          alt="Kwik Dry"
+          src={profile.logo_url}
+          alt={profile.business_short_name}
           style={{ maxWidth: 140, height: "auto", display: "block", margin: "0 auto", filter: "brightness(1.1) contrast(1.05)" }}
         />
         <span
@@ -89,12 +119,12 @@ export function Sidebar({ onClose }: SidebarProps) {
             borderTop: "1px solid rgba(255,255,255,0.08)",
             width: "80%",
             textAlign: "center",
-            background: "linear-gradient(90deg, #4f7df7, #3db54a)",
+            background: `linear-gradient(90deg, ${profile.primary_color}, ${profile.secondary_color})`,
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
           }}
         >
-          Command Center
+          {profile.app_name}
         </span>
       </div>
 
@@ -103,7 +133,7 @@ export function Sidebar({ onClose }: SidebarProps) {
         className="flex-1 py-4 space-y-5 px-3"
         style={{ overflowY: "auto", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
       >
-        {NAV_SECTIONS.map((section) => (
+        {NAV_SECTIONS_DYN.map((section) => (
           <div key={section.title}>
             <p className="tkd-section-label px-2 mb-1.5">{section.title}</p>
 
@@ -152,8 +182,8 @@ export function Sidebar({ onClose }: SidebarProps) {
         className="flex items-center gap-3 px-4 py-3.5 flex-shrink-0 cursor-pointer group"
         style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}
       >
-        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0" style={{ backgroundColor: "rgba(255,255,255,0.14)" }}>TK</div>
-        <span className="flex-1 text-sm font-medium truncate" style={{ color: "rgba(255,255,255,0.85)" }}>Tulsa Kwik Dry</span>
+        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0" style={{ backgroundColor: "rgba(255,255,255,0.14)" }}>{userInitials}</div>
+        <span className="flex-1 text-sm font-medium truncate" style={{ color: "rgba(255,255,255,0.85)" }}>{profile.business_short_name}</span>
         <Settings className="w-4 h-4 flex-shrink-0" style={{ color: "rgba(255,255,255,0.35)" }} />
       </div>
     </div>

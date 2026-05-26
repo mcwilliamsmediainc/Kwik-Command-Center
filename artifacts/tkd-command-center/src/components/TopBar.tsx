@@ -1,14 +1,10 @@
 import { Bell, Search, Menu } from "lucide-react";
 import { useLocation } from "wouter";
+import { useProfile } from "@/context/ProfileContext";
 
-const PAGE_TITLES: Record<string, string> = {
+const STATIC_PAGE_TITLES: Record<string, string> = {
   "/": "Dashboard",
-  "/agents/ryder": "Ryder",
-  "/agents/dispatch": "Dispatch",
-  "/agents/ledger": "Ledger",
-  "/agents/scout": "Scout",
   "/inbox": "Unified Inbox",
-  "/intelligence/ask": "Ask",
   "/intelligence/customers": "Customers",
   "/intelligence/reactivation": "Reactivation",
   "/operations/jobs": "Job Pipeline",
@@ -21,7 +17,15 @@ interface TopBarProps {
 
 export function TopBar({ onMenuClick }: TopBarProps) {
   const [location] = useLocation();
-  const title = PAGE_TITLES[location] || "Command Center";
+  const profile = useProfile();
+  const agentTitles: Record<string, string> = {
+    "/agents/ryder":     profile.agents.customer_faq,
+    "/agents/dispatch":  profile.agents.dispatch,
+    "/agents/ledger":    profile.agents.financial,
+    "/agents/scout":     profile.agents.marketing,
+    "/intelligence/ask": profile.agents.orchestrator,
+  };
+  const title = STATIC_PAGE_TITLES[location] || agentTitles[location] || profile.app_name;
 
   return (
     <div
@@ -38,7 +42,12 @@ export function TopBar({ onMenuClick }: TopBarProps) {
         >
           <Menu className="w-5 h-5" />
         </button>
-        <h1 className="font-semibold text-lg" style={{ color: "#1a2333" }}>{title}</h1>
+        <div className="flex flex-col leading-tight min-w-0">
+          <h1 className="font-semibold text-lg truncate" style={{ color: "#1a2333" }}>{title}</h1>
+          <span className="text-[10px] uppercase tracking-wider truncate hidden sm:block" style={{ color: "#94a3b8", letterSpacing: "0.8px" }}>
+            {profile.business_name}
+          </span>
+        </div>
       </div>
 
       <div className="flex items-center gap-3 md:gap-4">
@@ -52,8 +61,11 @@ export function TopBar({ onMenuClick }: TopBarProps) {
 
         <div className="h-6 w-[1px] bg-gray-200 mx-0.5 hidden sm:block"></div>
 
-        <button className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-[#2b4fac] font-medium text-sm border border-blue-100 hover:bg-blue-100 transition-colors">
-          AD
+        <button
+          className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 font-medium text-sm border border-blue-100 hover:bg-blue-100 transition-colors"
+          style={{ color: profile.primary_color }}
+        >
+          {profile.business_short_name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
         </button>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useProfile } from "@/context/ProfileContext";
 import {
   MessageCircle, Mail, Facebook, Send, Edit, UserCheck, Bot,
   Search, ArrowLeft,
@@ -32,7 +33,7 @@ const THREADS: Thread[] = [
     draftContext: "Customer upset that the technician arrived 20 minutes late with no apology. Respond with sincere apology and goodwill offer.",
     messages: [
       { from: "customer", text: "Your tech showed up 20 minutes late and didn't even apologize. Not a great experience." },
-      { from: "agent", text: "Hi Tom, I sincerely apologize for the delay. That's not the Kwik Dry standard." },
+      { from: "agent", text: "Hi Tom, I sincerely apologize for the delay. That's not our standard." },
       { from: "customer", text: "Okay, I appreciate that. Just want to know it won't happen again." },
     ],
   },
@@ -89,9 +90,11 @@ function ChannelIcon({ ch }: { ch: Thread["channel"] }) {
   return                        <Mail          className="w-3.5 h-3.5" style={{ color: "#6b7a90" }} />;
 }
 
-const RYDER_SYSTEM = `You are Ryder, the AI dispatcher for Tulsa Kwik Dry. Draft warm, professional responses on behalf of Tulsa Kwik Dry. Be concise — 2-4 sentences max. Use the customer context provided. Never make up prices or policies not in the context.`;
-
 export function InboxPage() {
+  const profile = useProfile();
+  const ryderName = profile.agents.customer_faq;
+  const RYDER_SYSTEM = `You are ${ryderName}, the AI dispatcher for ${profile.business_name}. Draft warm, professional responses on behalf of ${profile.business_name}. Be concise — 2-4 sentences max. Use the customer context provided. Never make up prices or policies not in the context.`;
+
   const [activeId,      setActiveId]      = useState("1");
   const [search,        setSearch]        = useState("");
   const [draft,         setDraft]         = useState("");
@@ -280,7 +283,7 @@ export function InboxPage() {
                 data-testid="button-ryder-draft">
                 {loadingDraft
                   ? <><span className="w-3 h-3 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />Drafting...</>
-                  : <><Bot className="w-3 h-3" />Ryder Draft</>}
+                  : <><Bot className="w-3 h-3" />{ryderName} Draft</>}
               </button>
             </div>
             <div className="px-5 py-3">
@@ -304,7 +307,7 @@ export function InboxPage() {
                 </>
               ) : (
                 <p className="text-xs" style={{ color: "#6b7a90" }}>
-                  Click "Ryder Draft" to generate an AI-powered response for this conversation.
+                  Click "{ryderName} Draft" to generate an AI-powered response for this conversation.
                 </p>
               )}
             </div>

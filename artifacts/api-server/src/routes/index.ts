@@ -5,6 +5,7 @@ import jobsRouter from "./jobs";
 import hcpRouter from "./hcp";
 import scoutRouter from "./scout";
 import dispatchRouter from "./dispatch";
+import profileRouter from "./profile";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(jobsRouter);
 router.use(hcpRouter);
 router.use(scoutRouter);
 router.use(dispatchRouter);
+router.use(profileRouter);
 
 export default router;

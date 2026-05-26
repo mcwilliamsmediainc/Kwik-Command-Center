@@ -1,46 +1,18 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Bot, Send, User } from "lucide-react";
+import { useProfile, buildBusinessContext, type BusinessProfile } from "@/context/ProfileContext";
 
-const SYSTEM_PROMPT = `You are Ryder, the friendly AI front-desk assistant for Tulsa Kwik Dry. You are warm and neighborly — never pushy — and you always end your reply with a soft, natural call to action to book.
+function buildRyderPrompt(p: BusinessProfile): string {
+  const agent = p.agents.customer_faq;
+  return `You are ${agent}, the friendly AI front-desk assistant for ${p.business_name}. You are warm and neighborly — never pushy — and you always end your reply with a soft, natural call to action to book.
 
-CARPET CLEANING:
-- First 2 rooms: $88 (minimum charge)
-- Whole house 5 rooms + hall: $188
-- Additional rooms: $45 each
+${buildBusinessContext(p)}
 
-UPHOLSTERY:
-- Sofa: $95 | Loveseat: $88 | Chair: $55 | Ottoman: $35
-- L-Shaped Sectional: $145–$175
-- U-Shaped Sectional: $175–$300
-
-AIR DUCT CLEANING:
-- Up to 10 vents: $199 | Each additional vent: $30
-
-DRYER VENT:
-- Side wall: $99 | Through roof: $149
-
-TILE & GROUT:
-- First 2 areas: $99 | Additional: $0.50/sq ft
-
-MATTRESS:
-- Twin: $69 | Full: $79 | Queen: $89 | King: $109
-
-WOOD FLOOR: $1.50/sq ft
-
-ADD-ON FEES:
-- Large furniture move: $50
-- Hazardous cleanup: $50
-- 24-hour cancellation fee: $50
-- High-rise fee: $30
-
-SERVICE AREA: Tulsa, Broken Arrow, Bixby, Jenks, Owasso, Sand Springs, Claremore, Glenpool, Collinsville, Catoosa, Coweta, Sapulpa, Skiatook, Wagoner
-
-BOOKING: Call or text (918) 238-2986, or book online
-HOURS: Monday–Saturday, 7am–10pm
 DRY TIME: About 1 hour (not 24 hours like steam cleaning)
 METHOD: Low-moisture oxygenated citrus — completely safe for kids and pets
 
-Answer questions accurately using this pricing. Keep replies concise and conversational. Always close with a gentle nudge to book — something like "Give us a call at (918) 238-2986 or book online whenever you're ready!"`;
+Answer questions accurately using the pricing and service details above. Keep replies concise and conversational. Always close with a gentle nudge to book — something like "Give us a call at ${p.phone} or book online whenever you're ready!"`;
+}
 
 interface Message {
   role: "user" | "assistant";
@@ -72,16 +44,24 @@ const TOP_QUESTIONS = [
   { question: "Pet safe?", count: 4 },
 ];
 
-const WELCOME: Message = {
-  role: "assistant",
-  content: "Hi! I'm Ryder, your Tulsa Kwik Dry assistant. I can help with pricing, service area, booking, and more. What can I help you with today?",
-};
-
 export function RyderPage() {
+  const profile = useProfile();
+  const agentName = profile.agents.customer_faq;
+  const SYSTEM_PROMPT = useMemo(() => buildRyderPrompt(profile), [profile]);
+  const WELCOME: Message = useMemo(() => ({
+    role: "assistant",
+    content: `Hi! I'm ${agentName}, your ${profile.business_short_name} assistant. I can help with pricing, service area, booking, and more. What can I help you with today?`,
+  }), [agentName, profile.business_short_name]);
+
   const [messages, setMessages] = useState<Message[]>([WELCOME]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  /* If the welcome is still the only message, refresh it when the profile loads. */
+  useEffect(() => {
+    setMessages((prev) => (prev.length === 1 && prev[0].role === "assistant" ? [WELCOME] : prev));
+  }, [WELCOME]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -156,7 +136,7 @@ export function RyderPage() {
             <Bot className="w-5 h-5" style={{ color: "#2b4fac" }} />
           </div>
           <div>
-            <p className="text-sm font-semibold" style={{ color: "#1a2333" }}>Ryder</p>
+            <p className="text-sm font-semibold" style={{ color: "#1a2333" }}>{agentName}</p>
             <p className="text-xs" style={{ color: "#3db54a" }}>Active · answering customer questions</p>
           </div>
           <div className="ml-auto flex items-center gap-1.5">
@@ -245,7 +225,7 @@ export function RyderPage() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask Ryder something..."
+            placeholder={`Ask ${agentName} something...`}
             disabled={loading}
             className="flex-1 text-sm px-4 rounded-full outline-none disabled:opacity-60 min-h-[44px]"
             style={{ border: "1px solid #e4e8f0", backgroundColor: "#f9fafb", color: "#1a2333" }}

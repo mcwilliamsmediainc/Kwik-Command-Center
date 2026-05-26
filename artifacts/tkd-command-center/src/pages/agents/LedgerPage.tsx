@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Send, CreditCard, RefreshCw, X, FileText } from "lucide-react";
+import { useProfile, type BusinessProfile } from "@/context/ProfileContext";
 
 /* ─── Types ──────────────────────────────────────────────────── */
 interface Msg { role: "user" | "assistant"; content: string; }
@@ -37,13 +38,14 @@ const QB_EXPENSES = {
   ],
 };
 
-function buildFinnPrompt(data: FinancialsData): string {
+function buildFinnPrompt(data: FinancialsData, p: BusinessProfile): string {
   const catLines  = data.revenueByCategory.map(c => `  - ${c.label}: $${c.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`).join("\n");
   const techLines = data.techs.map(t => `- ${t.name}: ${t.jobs} jobs · $${t.pay} due`).join("\n");
   const netProfit = data.totalRevenue - QB_EXPENSES.total - data.payrollTotal;
   const margin    = data.totalRevenue > 0 ? Math.round((netProfit / data.totalRevenue) * 100) : 0;
+  const cityState = p.address.split(",").slice(-2).join(",").trim() || p.address;
 
-  return `You are Finn, the AI financial advisor for Tulsa Kwik Dry — a carpet cleaning and restoration company in Tulsa, Oklahoma. You have real-time access to HouseCall Pro financial data.
+  return `You are ${p.agents.financial}, the AI financial advisor for ${p.business_name} — a ${p.industry.toLowerCase()} company at ${cityState}. You have real-time access to HouseCall Pro financial data.
 
 CURRENT FINANCIALS (${data.month}) — LIVE FROM HOUSECALL PRO:
 - Total Revenue (from ${data.jobCount} of ${data.totalJobItems} jobs): $${data.totalRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
@@ -57,14 +59,14 @@ EXPENSES (QuickBooks — estimated):
 - Supplies & Materials: $480
 - Marketing & Ads: $620
 - Software & Tools: $240
-- Contractor/Tech Payroll: $${data.payrollTotal.toLocaleString()} (real, from HCP job counts)
+- Contractor/Tech Payroll: $${data.payrollTotal.toLocaleString()} (real, from HCP job counts at $${p.pay_rate_per_job}/job flat rate)
 - Total Estimated Expenses: $${(QB_EXPENSES.total + data.payrollTotal).toLocaleString()}
 
 NET PROFIT (estimated): $${netProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })} (${margin}% margin)
 
 PAYROLL (${data.month}) — REAL DATA:
 ${techLines}
-- Total payroll due: $${data.payrollTotal.toLocaleString()} · $40/job flat rate
+- Total payroll due: $${data.payrollTotal.toLocaleString()} · $${p.pay_rate_per_job}/job flat rate
 
 INDUSTRY BENCHMARKS (residential cleaning):
 - Labor/contractor: 18–25% of revenue
@@ -80,15 +82,10 @@ YOUR STYLE:
 - Never make up data — only use what is provided above`;
 }
 
-const EMPTY_FINN_PROMPT = buildFinnPrompt({
+const EMPTY_FIN_DATA: FinancialsData = {
   month: "May 2026", totalRevenue: 0, jobCount: 0, totalJobItems: 0,
   paidTotal: 0, paidCount: 0, outstandingTotal: 0, outstandingInvoices: [],
   avgJobValue: 0, revenueByCategory: [], techs: [], payrollTotal: 0, syncedAt: new Date().toISOString(),
-});
-
-const WELCOME: Msg = {
-  role: "assistant",
-  content: "Hey — I'm Finn, your financial advisor for Tulsa Kwik Dry. I'm loading live data from HouseCall Pro right now. Once it's in, I can review your P&L, flag unusual expenses, benchmark your margins, and give you specific advice. What would you like to dig into?",
 };
 
 function fmt$(n: number): string {
@@ -193,11 +190,22 @@ function OutstandingModal({ invoices, total, onClose }: {
 
 /* ─── Component ──────────────────────────────────────────────── */
 export function LedgerPage() {
+  const profile = useProfile();
+  const finnName = profile.agents.financial;
+  const WELCOME: Msg = useMemo(() => ({
+    role: "assistant",
+    content: `Hey — I'm ${finnName}, your financial advisor for ${profile.business_name}. I'm loading live data from HouseCall Pro right now. Once it's in, I can review your P&L, flag unusual expenses, benchmark your margins, and give you specific advice. What would you like to dig into?`,
+  }), [finnName, profile.business_name]);
+
   const [messages, setMessages]       = useState<Msg[]>([WELCOME]);
   const [input, setInput]             = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [data, setData]               = useState<FinancialsData | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
+
+  useEffect(() => {
+    setMessages((prev) => (prev.length === 1 && prev[0].role === "assistant" ? [WELCOME] : prev));
+  }, [WELCOME]);
   const [showOutstanding, setShowOutstanding] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -221,7 +229,10 @@ export function LedgerPage() {
   const netProfit   = revenue - totalExp;
   const margin      = revenue > 0 ? Math.round((netProfit / revenue) * 100) : 0;
   const outstanding = data?.outstandingTotal ?? 0;
-  const finnPrompt  = data ? buildFinnPrompt(data) : EMPTY_FINN_PROMPT;
+  const finnPrompt  = useMemo(
+    () => buildFinnPrompt(data ?? EMPTY_FIN_DATA, profile),
+    [data, profile]
+  );
 
   async function sendMessage(text: string) {
     if (!text.trim() || chatLoading) return;
@@ -343,10 +354,10 @@ export function LedgerPage() {
           >
             {/* Finn header */}
             <div className="flex items-center gap-3 px-5 py-3.5 flex-shrink-0" style={{ borderBottom: "1px solid #f0f0f0" }}>
-              <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-white text-sm font-bold" style={{ background: "linear-gradient(135deg, #3db54a, #2b9e38)" }}>F</div>
+              <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-white text-sm font-bold" style={{ background: "linear-gradient(135deg, #3db54a, #2b9e38)" }}>{finnName[0]}</div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-bold" style={{ color: "#1a2333" }}>Finn</p>
+                  <p className="text-sm font-bold" style={{ color: "#1a2333" }}>{finnName}</p>
                   <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: data ? "#dcfce7" : "#fef9c3", color: data ? "#15803d" : "#92400e" }}>
                     {data ? "Live Data" : "Loading…"}
                   </span>
@@ -379,7 +390,7 @@ export function LedgerPage() {
                     className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-white text-xs font-bold"
                     style={{ background: msg.role === "assistant" ? "linear-gradient(135deg, #3db54a, #2b9e38)" : "#f0f2f5" }}
                   >
-                    {msg.role === "assistant" ? "F" : <span style={{ color: "#6b7a90" }}>U</span>}
+                    {msg.role === "assistant" ? finnName[0] : <span style={{ color: "#6b7a90" }}>U</span>}
                   </div>
                   <div
                     className="max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed"
@@ -410,7 +421,7 @@ export function LedgerPage() {
             >
               <input
                 type="text" value={input} onChange={e => setInput(e.target.value)}
-                placeholder="Ask Finn about your finances…"
+                placeholder={`Ask ${finnName} about your finances…`}
                 disabled={chatLoading}
                 className="flex-1 text-sm px-4 rounded-full outline-none disabled:opacity-60 min-h-[44px]"
                 style={{ border: "1px solid #e4e8f0", backgroundColor: "#f9fafb", color: "#1a2333" }}

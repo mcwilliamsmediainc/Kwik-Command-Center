@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useProfile } from "@/context/ProfileContext";
 import {
   MessageCircle,
   Mail,
@@ -225,6 +226,9 @@ const DEFAULT_DRAFT =
 
 /* ─── Component ──────────────────────────────────────────────── */
 export function DispatchPage() {
+  const profile = useProfile();
+  const ryderName = profile.agents.customer_faq;
+  const techList = profile.technicians.map((t) => t.split(" ")[0]).join(" / ");
   const [waMessages, setWaMessages]         = useState<WaMessage[]>([]);
   const [liveConnected, setLiveConnected]   = useState<boolean | null>(null);
   const [activeId, setActiveId]             = useState("1");
@@ -287,7 +291,7 @@ export function DispatchPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          system: `You are Ryder, the AI assistant for Tulsa Kwik Dry. Write a short, warm, professional reply draft for the following customer situation. Keep it under 3 sentences. End with a gentle call to action. Context: ${activeThread.draftContext}`,
+          system: `You are ${ryderName}, the AI assistant for ${profile.business_name}. Write a short, warm, professional reply draft for the following customer situation. Keep it under 3 sentences. End with a gentle call to action. Booking link: ${profile.booking_url}. Phone: ${profile.phone}. Context: ${activeThread.draftContext}`,
           messages: [{ role: "user", content: lastCustomerMsg }],
         }),
       });
@@ -499,7 +503,7 @@ export function DispatchPage() {
 ISSUE: [Category — detail]
 PHONE: [Number]
 URGENT: [Yes / No]
-TECH: [Isiah / Peyton / Anthony / Evan]`}
+TECH: [${techList}]`}
             </pre>
           </div>
         </div>
@@ -584,7 +588,7 @@ TECH: [Isiah / Peyton / Anthony / Evan]`}
               <div className="flex items-center gap-2 mb-2">
                 <Bot className="w-3.5 h-3.5" style={{ color: "#d97706" }} />
                 <span className="text-xs font-semibold" style={{ color: "#92400e" }}>
-                  Ryder Draft — Pending Approval
+                  {ryderName} Draft — Pending Approval
                 </span>
               </div>
 
@@ -600,7 +604,7 @@ TECH: [Isiah / Peyton / Anthony / Evan]`}
                 </div>
               ) : (
                 <p className="text-sm leading-relaxed mb-3" style={{ color: "#1a2333" }}>
-                  {draft || "Click \"Ryder Draft\" below to generate a reply."}
+                  {draft || `Click "${ryderName} Draft" below to generate a reply.`}
                 </p>
               )}
 
@@ -662,7 +666,7 @@ TECH: [Isiah / Peyton / Anthony / Evan]`}
               data-testid="button-ryder-draft"
             >
               <Zap className="w-3.5 h-3.5" />
-              {draftLoading ? "Drafting…" : "Ryder Draft"}
+              {draftLoading ? "Drafting…" : `${ryderName} Draft`}
             </button>
             <button
               onClick={() => void handleSend(inputText)}

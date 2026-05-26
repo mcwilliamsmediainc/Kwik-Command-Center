@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Send, Bot, DollarSign, Users, FileText, Zap } from "lucide-react";
+import { useProfile } from "@/context/ProfileContext";
 
 /* ─── Types ────────────────────────────────────────────────────── */
 interface Customer {
@@ -46,8 +47,6 @@ const OPEN_QUOTES = [
   { name: "Pine Plaza",   service: "Commercial Carpet", value: "$480", date: "May 10", age: "8 days" },
 ];
 
-const REACT_SYSTEM = `You are Ryder, the AI dispatcher for Tulsa Kwik Dry. Draft personalized win-back or quote follow-up messages on behalf of Tulsa Kwik Dry. Be warm, brief, and personal. Reference the specific service or customer history provided. 2-3 sentences max. Do not use generic templates.`;
-
 interface Msg { role: "user" | "assistant"; content: string }
 const WELCOME: Msg = {
   role: "assistant",
@@ -56,6 +55,13 @@ const WELCOME: Msg = {
 
 /* ─── Component ─────────────────────────────────────────────────── */
 export function ReactivationPage() {
+  const profile = useProfile();
+  const ryderName = profile.agents.customer_faq;
+  const REACT_SYSTEM = useMemo(
+    () => `You are ${ryderName}, the AI dispatcher for ${profile.business_name}. Draft personalized win-back or quote follow-up messages on behalf of ${profile.business_name}. Be warm, brief, and personal. Reference the specific service or customer history provided. 2-3 sentences max. Do not use generic templates.`,
+    [ryderName, profile.business_name],
+  );
+
   const [winBack,      setWinBack]      = useState<Customer[]>([]);
   const [kpis,         setKpis]         = useState({ dormant: 0, recoverable: 0, quotes: 0 });
   const [dataLoading,  setDataLoading]  = useState(true);
@@ -210,7 +216,7 @@ export function ReactivationPage() {
                   {c.totalSpent > 0 ? fmtCurrency(c.totalSpent) : "—"}
                 </span>
                 <button
-                  onClick={() => send(`Draft a warm win-back message for ${c.name} who last used Tulsa Kwik Dry for ${c.lastJobService || "carpet cleaning"} and has been dormant for ${fmtDormant(c.daysSince)}. Their lifetime value is ${c.totalSpent > 0 ? fmtCurrency(c.totalSpent) : "unknown"}.`)}
+                  onClick={() => send(`Draft a warm win-back message for ${c.name} who last used ${profile.business_name} for ${c.lastJobService || "service"} and has been dormant for ${fmtDormant(c.daysSince)}. Their lifetime value is ${c.totalSpent > 0 ? fmtCurrency(c.totalSpent) : "unknown"}.`)}
                   className="text-xs font-semibold px-2.5 py-1.5 rounded-md flex-shrink-0 min-h-[36px]"
                   style={{ backgroundColor: "#fff7ed", color: "#c2410c", border: "1px solid #fed7aa" }}
                   data-testid={`button-draft-winback-${c.name.toLowerCase().replace(/\s+/g, "-")}`}>
@@ -227,14 +233,14 @@ export function ReactivationPage() {
         style={{ border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
         <div className="px-5 py-3 flex items-center gap-3" style={{ borderBottom: "1px solid #f0f0f0" }}>
           <Bot className="w-4 h-4" style={{ color: "#8b5cf6" }} />
-          <p className="text-sm font-bold" style={{ color: "#1a2333" }}>Ryder — Message Drafter</p>
+          <p className="text-sm font-bold" style={{ color: "#1a2333" }}>{ryderName} — Message Drafter</p>
         </div>
         <div className="h-44 overflow-y-auto px-5 py-3 space-y-3">
           {messages.map((m, i) => (
             <div key={i} className={`flex items-start gap-2.5 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
               <div className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-white text-[10px] font-bold"
                 style={{ background: m.role === "assistant" ? "linear-gradient(135deg, #8b5cf6, #6d28d9)" : "#e9eef8" }}>
-                {m.role === "assistant" ? "R" : <span style={{ color: "#6b7a90" }}>U</span>}
+                {m.role === "assistant" ? ryderName[0] : <span style={{ color: "#6b7a90" }}>U</span>}
               </div>
               <div className="max-w-[80%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed"
                 style={m.role === "assistant"
@@ -260,7 +266,7 @@ export function ReactivationPage() {
         <form onSubmit={(e) => { e.preventDefault(); send(input); }}
           className="flex gap-2 px-4 py-3" style={{ borderTop: "1px solid #f0f0f0" }}>
           <input value={input} onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask Ryder to draft a message..." disabled={chatLoading}
+            placeholder={`Ask ${ryderName} to draft a message...`} disabled={chatLoading}
             className="flex-1 text-sm px-4 rounded-full outline-none min-h-[44px]"
             style={{ border: "1px solid #e4e8f0", backgroundColor: "#f9fafb", color: "#1a2333" }}
             data-testid="input-reactivation-chat" />

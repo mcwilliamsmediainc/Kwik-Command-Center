@@ -1,50 +1,31 @@
-import { useState, useRef, useEffect } from "react";
-import { Send, BarChart2, Zap, Users, Heart, TrendingUp } from "lucide-react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { Send, BarChart2, Zap, Users, TrendingUp } from "lucide-react";
+import { useProfile, buildBusinessContext, type BusinessProfile } from "@/context/ProfileContext";
 
-/* ─── System prompt — updated with real May 2026 data ───────── */
-const ASK_SYSTEM = `You are the TKD Intelligence engine for Tulsa Kwik Dry — a carpet cleaning company in Tulsa, Oklahoma. You have full visibility across the entire business.
+/* ─── System prompt builder ─────────────────────────────────── */
+function buildAskPrompt(p: BusinessProfile): string {
+  const techLines = p.technicians.map((t) => `- ${t}`).join("\n");
+  return `You are the ${p.business_short_name} Intelligence engine for ${p.business_name} — a ${p.industry.toLowerCase()} business. You have full visibility across the entire business.
 
-FINANCIAL PERFORMANCE (May 2026 — real data from HouseCall Pro):
-- Revenue MTD: $32,917 across 204 jobs (avg $161/job)
-- Top category: Air Duct $11,924 · Carpet Cleaning $7,491 · Other Services $5,131 · Upholstery $4,424 · Tile & Grout $2,021 · Wood Floors $1,927
-- Total expenses: $11,340 (payroll $8,160 + QuickBooks est. $3,180)
-- Net profit: $21,577 (66% margin)
-- Outstanding invoices: $1,977 unpaid
+${buildBusinessContext(p)}
 
-TECHNICIANS (real data):
-- Isiah Ervin: leading tech, highest job volume
-- Peyton Mueters: strong repeat-customer rating, requested by name
-- Anthony Rodgers: reliable, high revenue per job
-- Evan Hoover: growing, strong on air duct work
-- Pay rate: $40/job flat · Total payroll: $8,160 this month
+TEAM ROSTER:
+${techLines}
+- Pay rate: $${p.pay_rate_per_job}/job flat
 
-CUSTOMERS (real data):
-- 3,770 total customers in HouseCall Pro
-- Dormant 12mo+: 31 identified with average LTV $342
-- Open estimates: tracked in HCP
-
-MARKETING / SCOUT (real data from Google Places):
-- Google rating: 4.9★ (796 reviews)
-- Lead sources: Unknown 36% · Google 19% · Online Booking 16% · Repeat Customer 12% · Valpak 7% · Website 3% · Referral 3%
-- Key insight: 36% of leads have no source tracked — call center needs to record this
-
-RYDER (AI Dispatch):
-- Handles customer inquiries via WhatsApp, SMS, Facebook, Email
-- 47 messages handled today, 94% responded in under 1 minute
-- 3 pending approvals
-
-PLATFORM HEALTH:
-- Google: 4.9★ · 796 reviews (strong)
-- Yelp: duplicate listings (needs cleanup)
-- BBB: not accredited (competitor gap)
-- Birdeye: 5.0★
+OTHER AGENTS IN THIS SYSTEM:
+- ${p.agents.customer_faq}: customer FAQ & front desk
+- ${p.agents.financial}: financial advisor (HouseCall Pro + QuickBooks)
+- ${p.agents.dispatch}: call-center dispatch
+- ${p.agents.marketing}: marketing & reviews
 
 YOUR STYLE:
-- Give specific, data-driven answers using the real numbers above
+- Give specific, data-driven answers using real numbers when available
 - Be concise and direct — no fluff or filler
 - Surface actionable insights, not just summaries
-- If asked about something not in this data, say so honestly
+- If asked about something not in your data, say so honestly
 - Reference technicians by first name`;
+}
 
 /* ─── Quick action cards ─────────────────────────────────────── */
 const ACTION_CARDS = [
@@ -66,18 +47,24 @@ const QUICK_CHIPS = [
 /* ─── Types ──────────────────────────────────────────────────── */
 interface Msg { role: "user" | "assistant"; content: string }
 
-const WELCOME: Msg = {
-  role: "assistant",
-  content:
-    "I have real-time visibility across your business — $32,917 revenue, 204 jobs, 796 Google reviews at 4.9★, and live data from HouseCall Pro. Ask me anything about your operations, techs, or growth opportunities.",
-};
-
 /* ─── Component ──────────────────────────────────────────────── */
 export function AskPage() {
+  const profile = useProfile();
+  const orchestratorName = profile.agents.orchestrator;
+  const ASK_SYSTEM = useMemo(() => buildAskPrompt(profile), [profile]);
+  const WELCOME: Msg = useMemo(() => ({
+    role: "assistant",
+    content: `I have real-time visibility across ${profile.business_name} — financials, jobs, customers, technicians, and reviews. Ask me anything about your operations, techs, or growth opportunities.`,
+  }), [profile.business_name]);
+
   const [messages, setMessages] = useState<Msg[]>([WELCOME]);
   const [input, setInput]       = useState("");
   const [loading, setLoading]   = useState(false);
   const bottomRef               = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMessages((prev) => (prev.length === 1 && prev[0].role === "assistant" ? [WELCOME] : prev));
+  }, [WELCOME]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -140,14 +127,14 @@ export function AskPage() {
         {/* Header */}
         <div className="px-5 py-3.5 flex items-center gap-3 flex-shrink-0" style={{ borderBottom: "1px solid #f0f0f0" }}>
           <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, #8b5cf6, #6d28d9)" }}>TK</div>
+            style={{ background: "linear-gradient(135deg, #8b5cf6, #6d28d9)" }}>{orchestratorName[0]}</div>
           <div>
             <div className="flex items-center gap-2">
-              <p className="text-sm font-bold" style={{ color: "#1a2333" }}>TKD Intelligence</p>
+              <p className="text-sm font-bold" style={{ color: "#1a2333" }}>{orchestratorName} · {profile.business_short_name} Intelligence</p>
               <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
                 style={{ backgroundColor: "#dcfce7", color: "#15803d" }}>Live Data</span>
             </div>
-            <p className="text-xs" style={{ color: "#6b7a90" }}>$32,917 revenue · 204 jobs · 796 reviews · 4.9★ · Real HCP data</p>
+            <p className="text-xs" style={{ color: "#6b7a90" }}>Full visibility · HouseCall Pro · QuickBooks · Reviews</p>
           </div>
         </div>
 
@@ -169,7 +156,7 @@ export function AskPage() {
             <div key={i} className={`flex items-start gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
               <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-white text-xs font-bold"
                 style={{ background: m.role === "assistant" ? "linear-gradient(135deg, #8b5cf6, #6d28d9)" : "#e9eef8" }}>
-                {m.role === "assistant" ? "TK" : <span style={{ color: "#6b7a90" }}>U</span>}
+                {m.role === "assistant" ? orchestratorName[0] : <span style={{ color: "#6b7a90" }}>U</span>}
               </div>
               <div className="max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed"
                 style={m.role === "assistant"
@@ -182,7 +169,7 @@ export function AskPage() {
           {loading && (
             <div className="flex items-start gap-3">
               <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                style={{ background: "linear-gradient(135deg, #8b5cf6, #6d28d9)" }}>TK</div>
+                style={{ background: "linear-gradient(135deg, #8b5cf6, #6d28d9)" }}>{orchestratorName[0]}</div>
               <div className="rounded-2xl px-4 py-3 flex gap-1.5 items-center"
                 style={{ backgroundColor: "#f5f3ff", borderBottomLeftRadius: "4px" }}>
                 {[0,1,2].map((i) => (
