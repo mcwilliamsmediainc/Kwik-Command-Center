@@ -202,18 +202,47 @@ export function SettingsPage() {
               <div>
                 <Label className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#6b7a90" }}>Logo</Label>
                 <div className="mt-2 flex items-center gap-4">
-                  <div className="w-24 h-24 rounded-lg flex items-center justify-center border" style={{ backgroundColor: "#1a2333", borderColor: "#e4e8f0" }}>
+                  <div
+                    className="flex items-center justify-center"
+                    style={{
+                      backgroundColor: "#ffffff",
+                      borderRadius: "8px",
+                      padding: "8px",
+                      border: "1px solid rgba(0,0,0,0.08)",
+                      maxWidth: "160px",
+                      minWidth: "96px",
+                      minHeight: "96px",
+                    }}
+                  >
                     {draft.logo_url ? (
-                      <img src={draft.logo_url} alt="logo preview" className="max-w-full max-h-full object-contain" />
+                      <img
+                        src={draft.logo_url}
+                        alt="logo preview"
+                        style={{ maxWidth: "160px", height: "auto", display: "block" }}
+                      />
                     ) : (
                       <span className="text-xs" style={{ color: "#6b7a90" }}>No logo</span>
                     )}
                   </div>
                   <div>
                     <input ref={fileRef} type="file" accept="image/*" onChange={onLogoChange} className="hidden" data-testid="input-logo-file" />
-                    <Button variant="outline" type="button" onClick={() => fileRef.current?.click()} data-testid="button-upload-logo">
-                      <Upload className="w-4 h-4 mr-2" /> Upload Logo
-                    </Button>
+                    <div className="flex flex-col gap-2">
+                      <Button variant="outline" type="button" onClick={() => fileRef.current?.click()} data-testid="button-upload-logo">
+                        <Upload className="w-4 h-4 mr-2" /> Upload Logo
+                      </Button>
+                      <Button
+                        variant="outline"
+                        type="button"
+                        onClick={() => {
+                          setDraft((d) => ({ ...d, logo_url: "" }));
+                          if (fileRef.current) fileRef.current.value = "";
+                        }}
+                        disabled={!draft.logo_url}
+                        data-testid="button-remove-logo"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" /> Remove Logo
+                      </Button>
+                    </div>
                     <p className="text-[11px] mt-2" style={{ color: "#6b7a90" }}>PNG/SVG/JPG up to 500 KB. Stored as base64.</p>
                   </div>
                 </div>
