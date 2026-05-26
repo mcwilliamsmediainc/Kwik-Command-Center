@@ -228,7 +228,7 @@ const DEFAULT_DRAFT =
 export function DispatchPage() {
   const profile = useProfile();
   const ryderName = profile.agents.customer_faq;
-  const techList = profile.technicians.map((t) => t.split(" ")[0]).join(" / ");
+  const techList = profile.technicians.map((t) => t.name.split(" ")[0]).join(" / ");
   const [waMessages, setWaMessages]         = useState<WaMessage[]>([]);
   const [liveConnected, setLiveConnected]   = useState<boolean | null>(null);
   const [activeId, setActiveId]             = useState("1");

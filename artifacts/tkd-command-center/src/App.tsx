@@ -18,6 +18,7 @@ import { CustomersPage } from "@/pages/intelligence/CustomersPage";
 import { ReactivationPage } from "@/pages/intelligence/ReactivationPage";
 import { JobPipelinePage } from "@/pages/operations/JobPipelinePage";
 import { TeamPayPage } from "@/pages/operations/TeamPayPage";
+import { SettingsPage } from "@/pages/SettingsPage";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ function Router() {
         <Route path="/intelligence/reactivation" component={ReactivationPage} />
         <Route path="/operations/jobs" component={JobPipelinePage} />
         <Route path="/operations/team" component={TeamPayPage} />
+        <Route path="/settings" component={SettingsPage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

@@ -52,6 +52,12 @@ const NAV_SECTIONS = [
       { name: "Team & Pay", href: "/operations/team", icon: UserCheck, sub: "Contractors" },
     ],
   },
+  {
+    title: "PLATFORM",
+    items: [
+      { name: "Settings", href: "/settings", icon: Settings, sub: "Business profile" },
+    ],
+  },
 ];
 
 interface SidebarProps {

@@ -4,7 +4,7 @@ import { useProfile, buildBusinessContext, type BusinessProfile } from "@/contex
 
 /* ─── System prompt builder ─────────────────────────────────── */
 function buildAskPrompt(p: BusinessProfile): string {
-  const techLines = p.technicians.map((t) => `- ${t}`).join("\n");
+  const techLines = p.technicians.map((t) => `- ${t.name} ($${t.pay_rate}/job)`).join("\n");
   return `You are the ${p.business_short_name} Intelligence engine for ${p.business_name} — a ${p.industry.toLowerCase()} business. You have full visibility across the entire business.
 
 ${buildBusinessContext(p)}

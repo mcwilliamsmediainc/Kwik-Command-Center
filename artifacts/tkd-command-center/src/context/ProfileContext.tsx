@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+
+export interface IntegrationsState {
+  housecallpro:  { api_key: string; connected: boolean; last_sync: string | null };
+  quickbooks:    {                  connected: boolean; last_sync: string | null };
+  whatsapp:      { twilio_sid: string; twilio_token: string; twilio_number: string; last_sync: string | null };
+  google_places: { api_key: string;                       last_sync: string | null };
+}
 
 export interface BusinessProfile {
   business_name: string;
@@ -19,9 +26,9 @@ export interface BusinessProfile {
 
   service_area: string[];
 
-  services: Array<{ name: string; min_price: number; description: string }>;
+  services: Array<{ name: string; min_price: number; description: string; active: boolean }>;
 
-  technicians: string[];
+  technicians: Array<{ name: string; pay_rate: number }>;
   pay_rate_per_job: number;
 
   booking_url: string;
@@ -39,10 +46,13 @@ export interface BusinessProfile {
 
   hours: string;
   timezone: string;
+
+  integrations: IntegrationsState;
 }
 
-/* Fallback profile used while /api/profile is loading or if it fails.
-   Matches the server defaults so the UI renders correctly on first paint. */
+export type DeepPartial<T> = T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T;
+
+/* Fallback profile used while /api/profile is loading or if it fails. */
 const FALLBACK_PROFILE: BusinessProfile = {
   business_name: "Tulsa Kwik Dry Total Cleaning",
   business_short_name: "Kwik Dry",
@@ -64,15 +74,20 @@ const FALLBACK_PROFILE: BusinessProfile = {
     "Skiatook", "Wagoner",
   ],
   services: [
-    { name: "Carpet Cleaning",   min_price: 88,  description: "First 2 rooms $88, whole house $188" },
-    { name: "Upholstery",        min_price: 55,  description: "Chair $55, sofa $95, sectional $145-$300" },
-    { name: "Air Duct Cleaning", min_price: 199, description: "Up to 10 vents $199" },
-    { name: "Dryer Vent",        min_price: 99,  description: "Side wall $99, through roof $149" },
-    { name: "Tile & Grout",      min_price: 99,  description: "First 2 areas $99" },
-    { name: "Mattress",          min_price: 69,  description: "Twin $69 to King $109" },
-    { name: "Wood Floor",        min_price: 150, description: "$1.50/sq ft" },
+    { name: "Carpet Cleaning",   min_price: 88,  description: "First 2 rooms $88, whole house $188",      active: true },
+    { name: "Upholstery",        min_price: 55,  description: "Chair $55, sofa $95, sectional $145-$300", active: true },
+    { name: "Air Duct Cleaning", min_price: 199, description: "Up to 10 vents $199",                      active: true },
+    { name: "Dryer Vent",        min_price: 99,  description: "Side wall $99, through roof $149",         active: true },
+    { name: "Tile & Grout",      min_price: 99,  description: "First 2 areas $99",                        active: true },
+    { name: "Mattress",          min_price: 69,  description: "Twin $69 to King $109",                    active: true },
+    { name: "Wood Floor",        min_price: 150, description: "$1.50/sq ft",                              active: true },
   ],
-  technicians: ["Isiah Ervin", "Peyton Mueters", "Anthony Rodgers", "Evan Hoover"],
+  technicians: [
+    { name: "Isiah Ervin",     pay_rate: 40 },
+    { name: "Peyton Mueters",  pay_rate: 40 },
+    { name: "Anthony Rodgers", pay_rate: 40 },
+    { name: "Evan Hoover",     pay_rate: 40 },
+  ],
   pay_rate_per_job: 40,
   booking_url: "https://book.housecallpro.com/book/Tulsa-Kwik-Dry",
   housecallpro_connected: true,
@@ -87,19 +102,51 @@ const FALLBACK_PROFILE: BusinessProfile = {
   },
   hours: "Monday\u2013Saturday 7am\u201310pm",
   timezone: "America/Chicago",
+  integrations: {
+    housecallpro:  { api_key: "",      connected: true,  last_sync: null },
+    quickbooks:    {                   connected: true,  last_sync: null },
+    whatsapp:      { twilio_sid: "",   twilio_token: "", twilio_number: "", last_sync: null },
+    google_places: { api_key: "",      last_sync: null },
+  },
 };
 
-const ProfileContext = createContext<BusinessProfile>(FALLBACK_PROFILE);
+interface ProfileContextValue {
+  profile: BusinessProfile;
+  updateProfile: (patch: DeepPartial<BusinessProfile>) => Promise<BusinessProfile>;
+  refresh: () => Promise<void>;
+}
+
+const ProfileContext = createContext<ProfileContextValue>({
+  profile: FALLBACK_PROFILE,
+  updateProfile: async () => FALLBACK_PROFILE,
+  refresh: async () => {},
+});
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<BusinessProfile>(FALLBACK_PROFILE);
 
-  useEffect(() => {
-    fetch("/api/profile")
-      .then((r) => r.json())
-      .then((p: BusinessProfile) => setProfile(p))
-      .catch(() => { /* keep fallback */ });
+  const refresh = useCallback(async () => {
+    try {
+      const r = await fetch("/api/profile");
+      if (!r.ok) return;
+      const p = (await r.json()) as BusinessProfile;
+      setProfile(p);
+    } catch { /* keep current */ }
   }, []);
+
+  const updateProfile = useCallback(async (patch: DeepPartial<BusinessProfile>) => {
+    const r = await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (!r.ok) throw new Error(`PATCH /api/profile failed: ${r.status}`);
+    const next = (await r.json()) as BusinessProfile;
+    setProfile(next);
+    return next;
+  }, []);
+
+  useEffect(() => { void refresh(); }, [refresh]);
 
   /* Expose brand colors as CSS vars so any component can pick them up. */
   useEffect(() => {
@@ -108,20 +155,30 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     root.style.setProperty("--brand-secondary", profile.secondary_color);
   }, [profile.primary_color, profile.secondary_color]);
 
-  return <ProfileContext.Provider value={profile}>{children}</ProfileContext.Provider>;
+  return (
+    <ProfileContext.Provider value={{ profile, updateProfile, refresh }}>
+      {children}
+    </ProfileContext.Provider>
+  );
 }
 
 export function useProfile(): BusinessProfile {
-  return useContext(ProfileContext);
+  return useContext(ProfileContext).profile;
+}
+
+export function useProfileActions() {
+  const { updateProfile, refresh } = useContext(ProfileContext);
+  return { updateProfile, refresh };
 }
 
 /* ─── Helper: build a reusable business-context block for AI system prompts ─── */
 export function buildBusinessContext(p: BusinessProfile): string {
   const servicesBlock = p.services
+    .filter((s) => s.active)
     .map((s) => `- ${s.name}: ${s.description}`)
     .join("\n");
   const areaBlock = p.service_area.join(", ");
-  const techBlock = p.technicians.join(", ");
+  const techBlock = p.technicians.map((t) => t.name).join(", ");
 
   return `BUSINESS: ${p.business_name} (${p.industry})
 PHONE: ${p.phone}
