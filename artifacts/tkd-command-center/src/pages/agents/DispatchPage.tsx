@@ -104,10 +104,16 @@ function buildThreads(msgs: WaMessage[]): Thread[] {
       };
     })
     .sort((a, b) => {
-      /* Put threads with new messages first */
+      /* Put threads with new messages first, then most-recent message
+         within each bucket. Recency matters: if a stale test thread
+         and a fresh real-customer thread both have hasNew=true, the
+         real customer must surface on top so the rep never replies to
+         the wrong number. */
       if (a.hasNew && !b.hasNew) return -1;
       if (!a.hasNew && b.hasNew) return 1;
-      return 0;
+      const aLatest = a.messages.length > 0 ? a.messages[a.messages.length - 1].id : "";
+      const bLatest = b.messages.length > 0 ? b.messages[b.messages.length - 1].id : "";
+      return bLatest.localeCompare(aLatest);
     });
 }
 
@@ -290,8 +296,21 @@ export function DispatchPage() {
   const threads     = realThreads.length > 0 ? realThreads : MOCK_THREADS;
   const usingReal   = realThreads.length > 0;
 
-  /* Keep activeId valid when threads change */
+  /* Keep activeId valid when threads change.
+     If the previously-selected thread no longer exists (e.g. real
+     threads arrived and replaced mocks, or test threads were cleared),
+     fall back to the top-of-list (newest hasNew). */
   const activeThread = threads.find((t) => t.id === activeId) ?? threads[0];
+
+  /* Auto-promote the newest real thread to active whenever the active
+     id doesn't match any current thread. Prevents the rep from staring
+     at a stale selection and accidentally replying to the wrong
+     customer. */
+  useEffect(() => {
+    if (!threads.some((t) => t.id === activeId) && threads.length > 0) {
+      setActiveId(threads[0].id);
+    }
+  }, [threads, activeId]);
 
   const showApproval =
     !manualMode &&
@@ -365,13 +384,14 @@ export function DispatchPage() {
     }
 
     setSendLoading(true);
+    const replyTo = activeThread.phone;
     /* Visible breadcrumb so a rep can confirm the real number is being used. */
-    console.log("[Dispatch] sending to:", activeThread.phone);
+    console.log("Replying to:", replyTo);
     try {
       const res = await fetch("/api/dispatch/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: activeThread.phone, message: text }),
+        body: JSON.stringify({ to: replyTo, message: text }),
       });
       const data = await res.json() as {
         success?: boolean;

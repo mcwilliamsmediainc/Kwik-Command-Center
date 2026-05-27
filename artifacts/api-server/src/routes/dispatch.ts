@@ -55,6 +55,17 @@ router.post("/webhooks/whatsapp", (req: Request, res: Response) => {
   }
 });
 
+/* ── POST /dispatch/messages/clear ───────────────────────────────
+   Wipes the in-memory message store. Useful when test or stale
+   threads (e.g. from curl probes) are polluting the dispatch list
+   in production. In-memory only; no DB. */
+router.post("/dispatch/messages/clear", (req: Request, res: Response) => {
+  const removed = messages.length;
+  messages.length = 0;
+  req.log.info({ removed }, "Dispatch message store cleared");
+  res.json({ ok: true, removed });
+});
+
 /* ── GET /dispatch/messages ──────────────────────────────────── */
 router.get("/dispatch/messages", (_req: Request, res: Response) => {
   const sorted = [...messages].sort(
