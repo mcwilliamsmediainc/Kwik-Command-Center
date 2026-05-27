@@ -241,6 +241,8 @@ export function DispatchPage() {
   const techList = profile.technicians.map((t) => t.name.split(" ")[0]).join(" / ");
   const [waMessages, setWaMessages]         = useState<WaMessage[]>([]);
   const [liveConnected, setLiveConnected]   = useState<boolean | null>(null);
+  const [isReceiving, setIsReceiving]       = useState<boolean>(false);
+  const [lastInboundAt, setLastInboundAt]   = useState<string | null>(null);
   const [activeId, setActiveId]             = useState("1");
   const [draft, setDraft]                   = useState(DEFAULT_DRAFT);
   const [draftLoading, setDraftLoading]     = useState(false);
@@ -273,15 +275,25 @@ export function DispatchPage() {
     setInputText("");
   }
 
-  /* ── Poll /api/dispatch/messages every 10 s ─────────────────── */
+  /* ── Poll /api/dispatch/messages + /status every 10 s ───────── */
   const fetchMessages = useCallback(async () => {
     try {
-      const res  = await fetch("/api/dispatch/messages");
-      const data = await res.json() as WaMessage[];
+      const [msgRes, statusRes] = await Promise.all([
+        fetch("/api/dispatch/messages"),
+        fetch("/api/dispatch/status"),
+      ]);
+      const data = await msgRes.json() as WaMessage[];
+      const status = await statusRes.json() as {
+        isReceiving: boolean;
+        lastInboundAt: string | null;
+      };
       setWaMessages(data);
+      setIsReceiving(status.isReceiving);
+      setLastInboundAt(status.lastInboundAt);
       setLiveConnected(true);
     } catch {
       setLiveConnected(false);
+      setIsReceiving(false);
     }
   }, []);
 
@@ -290,6 +302,16 @@ export function DispatchPage() {
     const id = setInterval(() => void fetchMessages(), 10_000);
     return () => clearInterval(id);
   }, [fetchMessages]);
+
+  function lastInboundLabel(): string {
+    if (!lastInboundAt) return "no inbound yet";
+    const ageMs = Date.now() - new Date(lastInboundAt).getTime();
+    const mins = Math.floor(ageMs / 60_000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    return `${hrs}h ago`;
+  }
 
   /* ── Derive threads from real messages; fall back to mocks ───── */
   const realThreads = useMemo(() => buildThreads(waMessages), [waMessages]);
@@ -487,12 +509,37 @@ export function DispatchPage() {
                 Conversations
               </p>
               <div className="flex items-center gap-2">
-                {/* Live indicator */}
+                {/* Webhook receive indicator: green = inbound within 5 min, gray = idle */}
                 {liveConnected !== null && (
-                  <span title={liveConnected ? "Live — polling every 10s" : "Disconnected"}>
-                    {liveConnected
-                      ? <Wifi className="w-3 h-3" style={{ color: "#3db54a" }} />
-                      : <WifiOff className="w-3 h-3" style={{ color: "#f97316" }} />}
+                  <span
+                    className="flex items-center gap-1 text-[10px] font-semibold"
+                    title={
+                      !liveConnected
+                        ? "API unreachable"
+                        : isReceiving
+                          ? `Connected — last inbound ${lastInboundLabel()}`
+                          : `Idle — last inbound ${lastInboundLabel()}`
+                    }
+                    data-testid="dispatch-connection-status"
+                  >
+                    <span
+                      className={`w-2 h-2 rounded-full ${isReceiving ? "animate-pulse" : ""}`}
+                      style={{
+                        backgroundColor: !liveConnected
+                          ? "#ef4444"
+                          : isReceiving
+                            ? "#3db54a"
+                            : "#9ca3af",
+                      }}
+                    />
+                    <span style={{ color: !liveConnected ? "#b91c1c" : isReceiving ? "#15803d" : "#6b7a90" }}>
+                      {!liveConnected ? "Disconnected" : isReceiving ? "Connected" : "Idle"}
+                    </span>
+                    {liveConnected && (
+                      liveConnected && isReceiving
+                        ? <Wifi className="w-3 h-3" style={{ color: "#3db54a" }} />
+                        : <WifiOff className="w-3 h-3" style={{ color: "#9ca3af" }} />
+                    )}
                   </span>
                 )}
                 {newCount > 0 && (

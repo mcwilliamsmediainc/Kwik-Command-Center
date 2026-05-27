@@ -1,7 +1,13 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import twilio from "twilio";
+import { promises as fs } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import path from "node:path";
 
-/* ── In-memory message store ─────────────────────────────────── */
+/* ── File-backed message store ───────────────────────────────────
+   Messages are persisted to ./data/messages.json so they survive
+   server restarts and deployments. Reads are served from an
+   in-memory mirror for speed; writes go to both. */
 export interface WaMessage {
   id: string;
   from: string;
@@ -11,7 +17,38 @@ export interface WaMessage {
   status: "new" | "read";
 }
 
-const messages: WaMessage[] = [];
+const DATA_DIR = path.join(process.cwd(), "data");
+const MESSAGES_FILE = path.join(DATA_DIR, "messages.json");
+
+function loadMessagesSync(): WaMessage[] {
+  try {
+    if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
+    if (!existsSync(MESSAGES_FILE)) return [];
+    const raw = readFileSync(MESSAGES_FILE, "utf8");
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? (parsed as WaMessage[]) : [];
+  } catch (err) {
+    console.error("Failed to load messages.json — starting empty:", err);
+    return [];
+  }
+}
+
+const messages: WaMessage[] = loadMessagesSync();
+let lastInboundAt: string | null =
+  messages.find((m) => m.name !== "You")?.timestamp ?? null;
+
+/* Serialise writes so concurrent webhook bursts don't clobber the file. */
+let writeChain: Promise<void> = Promise.resolve();
+function persistMessages(): void {
+  writeChain = writeChain
+    .then(async () => {
+      await fs.mkdir(DATA_DIR, { recursive: true });
+      await fs.writeFile(MESSAGES_FILE, JSON.stringify(messages, null, 2), "utf8");
+    })
+    .catch((err) => {
+      console.error("Failed to write messages.json:", err);
+    });
+}
 
 const router: IRouter = Router();
 
@@ -49,21 +86,39 @@ router.post("/webhooks/whatsapp", (req: Request, res: Response) => {
     };
 
     messages.unshift(msg);
+    lastInboundAt = msg.timestamp;
+    persistMessages();
     req.log.info({ from, name: msg.name }, "WhatsApp message received");
   } catch (err) {
     req.log.error({ err }, "Failed to process WhatsApp webhook body");
   }
 });
 
-/* ── POST /dispatch/messages/clear ───────────────────────────────
-   Wipes the in-memory message store. Useful when test or stale
-   threads (e.g. from curl probes) are polluting the dispatch list
-   in production. In-memory only; no DB. */
+/* ── POST /dispatch/messages/clear (admin) ──────────────────────
+   Wipes the persisted message store. Useful when test or stale
+   threads are polluting the dispatch list in production. */
 router.post("/dispatch/messages/clear", (req: Request, res: Response) => {
   const removed = messages.length;
   messages.length = 0;
+  lastInboundAt = null;
+  persistMessages();
   req.log.info({ removed }, "Dispatch message store cleared");
   res.json({ ok: true, removed });
+});
+
+/* ── GET /dispatch/status ───────────────────────────────────────
+   Lightweight health endpoint for the Dispatch "Connected" dot.
+   `isReceiving` is true if any inbound WhatsApp message has
+   landed within the last 5 minutes. */
+router.get("/dispatch/status", (_req: Request, res: Response) => {
+  const FIVE_MIN_MS = 5 * 60 * 1000;
+  const isReceiving =
+    lastInboundAt !== null && Date.now() - new Date(lastInboundAt).getTime() < FIVE_MIN_MS;
+  res.json({
+    isReceiving,
+    lastInboundAt,
+    totalMessages: messages.length,
+  });
 });
 
 /* ── GET /dispatch/messages ──────────────────────────────────── */
@@ -151,6 +206,7 @@ router.post("/dispatch/send", async (req: Request, res: Response) => {
       timestamp: new Date().toISOString(),
       status: "read",
     });
+    persistMessages();
 
     console.log("SUCCESS - SID:", message.sid);
     res.json({ success: true, sid: message.sid });
