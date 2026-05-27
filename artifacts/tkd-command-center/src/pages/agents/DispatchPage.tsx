@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useProfile } from "@/context/ProfileContext";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -238,7 +238,31 @@ export function DispatchPage() {
   const [inputText, setInputText]           = useState("");
   const [sendLoading, setSendLoading]       = useState(false);
   const [sendError, setSendError]           = useState("");
+  const [manualMode, setManualMode]         = useState(false);
+  const inputRef                            = useRef<HTMLInputElement>(null);
   const { toast }                           = useToast();
+
+  /* ── Take over / Edit / Exit handlers ────────────────────────── */
+  function focusInput() {
+    /* Wait a tick so the input is rendered with its new placeholder/border. */
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }
+  function handleTakeOver() {
+    setManualMode(true);
+    setDraft("");
+    setInputText("");
+    focusInput();
+  }
+  function handleEditDraft() {
+    setManualMode(true);
+    setInputText(draft);
+    setDraft("");
+    focusInput();
+  }
+  function exitManualMode() {
+    setManualMode(false);
+    setInputText("");
+  }
 
   /* ── Poll /api/dispatch/messages every 10 s ─────────────────── */
   const fetchMessages = useCallback(async () => {
@@ -267,9 +291,15 @@ export function DispatchPage() {
   const activeThread = threads.find((t) => t.id === activeId) ?? threads[0];
 
   const showApproval =
-    activeThread.badge === "needs-approval" ||
-    activeThread.badge === "pending" ||
-    activeThread.badge === "escalated";
+    !manualMode &&
+    (activeThread.badge === "needs-approval" ||
+      activeThread.badge === "pending" ||
+      activeThread.badge === "escalated");
+
+  /* Reset manual mode whenever the rep switches to a different thread. */
+  useEffect(() => {
+    setManualMode(false);
+  }, [activeId]);
 
   /* ── KPI counters derived from real messages ─────────────────── */
   const newCount = waMessages.filter((m) => m.status === "new" && m.name !== "You").length;
@@ -643,13 +673,16 @@ TECH: [${techList}]`}
                   <Send className="w-3.5 h-3.5" /> {sendLoading ? "Sending…" : "Send"}
                 </button>
                 <button
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                  onClick={handleEditDraft}
+                  disabled={!draft}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
                   style={{ backgroundColor: "#f0f2f5", color: "#4b5563" }}
                   data-testid="button-edit-draft"
                 >
                   <Edit className="w-3.5 h-3.5" /> Edit
                 </button>
                 <button
+                  onClick={handleTakeOver}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
                   style={{ backgroundColor: "#f0f2f5", color: "#4b5563" }}
                   data-testid="button-take-over"
@@ -667,19 +700,46 @@ TECH: [${techList}]`}
             </div>
           )}
 
+          {/* ── Manual mode banner ── */}
+          {manualMode && (
+            <div
+              className="flex items-center justify-between px-5 py-2 text-xs font-semibold flex-shrink-0"
+              style={{ backgroundColor: "#eff6ff", color: "#1d4ed8", borderTop: "1px solid #bfdbfe" }}
+              data-testid="banner-manual-mode"
+            >
+              <span className="flex items-center gap-1.5">
+                <UserCheck className="w-3.5 h-3.5" />
+                Manual mode — you are replying directly
+              </span>
+              <button
+                onClick={exitManualMode}
+                className="flex items-center gap-1 px-2 py-0.5 rounded hover:bg-blue-100"
+                style={{ color: "#1d4ed8" }}
+                data-testid="button-exit-manual-mode"
+              >
+                × Exit
+              </button>
+            </div>
+          )}
+
           {/* ── Input bar ── */}
           <div
             className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
             style={{ borderTop: "1px solid #f0f0f0" }}
           >
             <input
+              ref={inputRef}
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void handleSend(inputText); } }}
-              placeholder="Type a message…"
+              placeholder={manualMode ? "You have taken over — type your reply…" : "Type a message…"}
               className="flex-1 text-sm px-4 py-2.5 rounded-full outline-none"
-              style={{ border: "1px solid #e4e8f0", backgroundColor: "#f9fafb", color: "#1a2333" }}
+              style={{
+                border: manualMode ? "1px solid #2563eb" : "1px solid #e4e8f0",
+                backgroundColor: manualMode ? "#eff6ff" : "#f9fafb",
+                color: "#1a2333",
+              }}
               data-testid="input-dispatch-message"
             />
             <button
