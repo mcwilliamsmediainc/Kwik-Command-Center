@@ -52,12 +52,26 @@ function persistMessages(): void {
 
 const router: IRouter = Router();
 
+/* ── GET /webhooks/whatsapp ──────────────────────────────────────
+   Health/reachability probe. Hit this from a browser or curl to
+   confirm the webhook URL is wired up correctly before pointing
+   Twilio at it. */
+router.get("/webhooks/whatsapp", (_req: Request, res: Response) => {
+  res.json({
+    status: "webhook ready",
+    messages_stored: messages.length,
+    last_message: lastInboundAt,
+  });
+});
+
 /* ── POST /webhooks/whatsapp ─────────────────────────────────── */
 router.post("/webhooks/whatsapp", (req: Request, res: Response) => {
-  /* Log the full raw payload so we can inspect the exact shape Twilio
-     sends (Messaging Service payloads can vary slightly from
-     direct-number ones — e.g. MessagingServiceSid present, From may
-     be a group). */
+  /* Log EVERY hit unconditionally — useful when Twilio's request
+     isn't reaching us in the expected shape (or at all). */
+  console.log("WEBHOOK HIT at", new Date().toISOString());
+  console.log("Headers:", JSON.stringify(req.headers));
+  console.log("Body:", JSON.stringify(req.body));
+  /* Also keep the pretty-printed raw payload for quick eyeballing. */
   console.log("RAW WEBHOOK BODY:", JSON.stringify(req.body, null, 2));
 
   /* Acknowledge Twilio immediately so the request never times out, no
