@@ -17,28 +17,42 @@ const router: IRouter = Router();
 
 /* ── POST /webhooks/whatsapp ─────────────────────────────────── */
 router.post("/webhooks/whatsapp", (req: Request, res: Response) => {
-  const { From, Body, ProfileName, MessageSid } = req.body as {
-    From?: string;
-    Body?: string;
-    ProfileName?: string;
-    MessageSid?: string;
-  };
+  /* Log the full raw payload so we can inspect the exact shape Twilio
+     sends (Messaging Service payloads can vary slightly from
+     direct-number ones — e.g. MessagingServiceSid present, From may
+     be a group). */
+  console.log("RAW WEBHOOK BODY:", JSON.stringify(req.body, null, 2));
 
-  const from = (From ?? "").replace(/^whatsapp:/, "");
-  const msg: WaMessage = {
-    id: MessageSid ?? `msg-${Date.now()}`,
-    from,
-    name: ProfileName ?? from,
-    body: Body ?? "",
-    timestamp: new Date().toISOString(),
-    status: "new",
-  };
-
-  messages.unshift(msg);
-  req.log.info({ from, name: msg.name }, "WhatsApp message received");
-
+  /* Acknowledge Twilio immediately so the request never times out, no
+     matter what our downstream processing does. */
   res.set("Content-Type", "text/xml");
-  res.send("<Response></Response>");
+  res.status(200).send("<Response></Response>");
+
+  /* ── Process after the response is sent ── */
+  try {
+    const body = req.body as {
+      From?: string;
+      Body?: string;
+      ProfileName?: string;
+      MessageSid?: string;
+      WaId?: string;
+    };
+    const fromRaw = body.From ?? body.WaId ?? "";
+    const from = fromRaw.replace(/^whatsapp:/, "");
+    const msg: WaMessage = {
+      id: body.MessageSid ?? `msg-${Date.now()}`,
+      from,
+      name: body.ProfileName ?? from,
+      body: body.Body ?? "",
+      timestamp: new Date().toISOString(),
+      status: "new",
+    };
+
+    messages.unshift(msg);
+    req.log.info({ from, name: msg.name }, "WhatsApp message received");
+  } catch (err) {
+    req.log.error({ err }, "Failed to process WhatsApp webhook body");
+  }
 });
 
 /* ── GET /dispatch/messages ──────────────────────────────────── */
