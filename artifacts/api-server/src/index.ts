@@ -38,4 +38,5 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  console.log("WhatsApp sender:", process.env["TWILIO_WHATSAPP_NUMBER"]);
 });
