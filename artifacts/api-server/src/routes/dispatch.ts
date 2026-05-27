@@ -135,11 +135,16 @@ router.get("/dispatch/status", (_req: Request, res: Response) => {
   });
 });
 
-/* ── GET /dispatch/messages ──────────────────────────────────── */
+/* ── GET /dispatch/messages ──────────────────────────────────────
+   Reads from the SAME `messages` array that the webhook writes to.
+   That array is the in-memory mirror of ./data/messages.json — both
+   the webhook write and this poll read share it, so there is no
+   "two arrays" drift. */
 router.get("/dispatch/messages", (_req: Request, res: Response) => {
   const sorted = [...messages].sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
+  console.log("POLL: returning", messages.length, "messages");
   res.json(sorted);
 });
 

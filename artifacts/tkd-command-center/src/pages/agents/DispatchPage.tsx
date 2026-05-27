@@ -287,6 +287,7 @@ export function DispatchPage() {
         isReceiving: boolean;
         lastInboundAt: string | null;
       };
+      console.log("Dispatch received:", data.length, "messages");
       setWaMessages(data);
       setIsReceiving(status.isReceiving);
       setLastInboundAt(status.lastInboundAt);
