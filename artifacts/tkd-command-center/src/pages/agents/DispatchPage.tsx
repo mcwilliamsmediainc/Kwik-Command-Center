@@ -111,7 +111,10 @@ function buildThreads(msgs: WaMessage[]): Thread[] {
     });
 }
 
-/* ─── Static fallback data (shown when no real messages yet) ─── */
+/* ─── Demo fallback threads (shown only when zero real WhatsApp
+   messages exist). All phone numbers below are illustrative — they
+   are NEVER used as the reply target because handleSend short-circuits
+   when `usingReal === false`. */
 const MOCK_THREADS: Thread[] = [
   {
     id: "1",
@@ -352,7 +355,18 @@ export function DispatchPage() {
       return;
     }
 
+    if (!activeThread.phone) {
+      toast({
+        variant: "destructive",
+        title: "No recipient number",
+        description: "This thread has no sender phone number — cannot reply.",
+      });
+      return;
+    }
+
     setSendLoading(true);
+    /* Visible breadcrumb so a rep can confirm the real number is being used. */
+    console.log("[Dispatch] sending to:", activeThread.phone);
     try {
       const res = await fetch("/api/dispatch/send", {
         method: "POST",
@@ -579,10 +593,29 @@ TECH: [${techList}]`}
                   {activeThread.channel}
                 </span>
               </div>
-              <span className="text-xs" style={{ color: "#6b7a90" }}>
-                {usingReal
-                  ? activeThread.phone
-                  : `${activeThread.jobs} jobs · LTV ${activeThread.ltv} · Last service ${activeThread.lastService} · ${activeThread.phone}`}
+              <span
+                className="text-xs flex items-center gap-1.5"
+                style={{ color: "#6b7a90" }}
+                data-testid="thread-header-phone"
+              >
+                {usingReal ? (
+                  <>
+                    <span style={{ color: "#3db54a", fontWeight: 600 }}>Reply to:</span>
+                    <span style={{ fontFamily: "monospace", color: "#1a2333" }}>
+                      {activeThread.phone || "(unknown sender)"}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span
+                      className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase"
+                      style={{ backgroundColor: "#fef3c7", color: "#92400e" }}
+                    >
+                      Demo
+                    </span>
+                    {`${activeThread.jobs} jobs · LTV ${activeThread.ltv} · Last service ${activeThread.lastService}`}
+                  </>
+                )}
               </span>
             </div>
             <span
