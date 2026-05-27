@@ -82,18 +82,18 @@ router.post("/dispatch/send", async (req: Request, res: Response) => {
 
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
     const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER;
+    const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
 
     console.log("SID exists:", !!accountSid);
     console.log("Token exists:", !!authToken);
-    console.log("From:", fromNumber);
+    console.log("Messaging Service SID exists:", !!messagingServiceSid);
     console.log("To raw:", req.body.to);
 
-    if (!accountSid || !authToken) {
+    if (!accountSid || !authToken || !messagingServiceSid) {
       res.status(500).json({
         success: false,
         error: "Twilio credentials missing from secrets",
-        help: "Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_WHATSAPP_NUMBER in Secrets.",
+        help: "Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_MESSAGING_SERVICE_SID in Secrets.",
       });
       return;
     }
@@ -105,18 +105,15 @@ router.post("/dispatch/send", async (req: Request, res: Response) => {
     to = to.replace(/[\s\-()]/g, "");
     if (!to.startsWith("+")) to = "+" + to;
     const toNumberPlain = to;
-    to = "whatsapp:" + to;
+    const formattedTo = "whatsapp:" + to;
 
-    let from: string = fromNumber || "";
-    if (!from.startsWith("whatsapp:")) from = "whatsapp:" + from;
-
-    console.log("Sending from:", from);
-    console.log("Sending to:", to);
+    console.log("Sending via Messaging Service:", messagingServiceSid);
+    console.log("Sending to:", formattedTo);
     console.log("Message:", req.body.message);
 
     const message = await client.messages.create({
-      from: from,
-      to: to,
+      messagingServiceSid,
+      to: formattedTo,
       body: req.body.message || "Test message from Kwik Dry",
     });
 
