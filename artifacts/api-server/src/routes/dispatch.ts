@@ -52,32 +52,39 @@ function persistMessages(): void {
 
 const router: IRouter = Router();
 
+/* ── TwiML helpers ──────────────────────────────────────────────
+   Twilio's webhook validator and message pipeline both expect a
+   well-formed TwiML MessagingResponse with the XML prolog, served
+   as text/xml. An empty <Response/> tells Twilio "I handled it,
+   send no auto-reply." */
+const EMPTY_TWIML =
+  '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
+
+function logWebhookHit(req: Request): void {
+  console.log("WEBHOOK METHOD:", req.method);
+  console.log("WEBHOOK BODY:", JSON.stringify(req.body));
+  console.log("WEBHOOK QUERY:", JSON.stringify(req.query));
+}
+
 /* ── GET /webhooks/whatsapp ──────────────────────────────────────
-   Health/reachability probe. Hit this from a browser or curl to
-   confirm the webhook URL is wired up correctly before pointing
-   Twilio at it. */
-router.get("/webhooks/whatsapp", (_req: Request, res: Response) => {
-  res.json({
-    status: "webhook ready",
-    messages_stored: messages.length,
-    last_message: lastInboundAt,
-  });
+   Twilio sometimes issues a GET to verify the endpoint before
+   sending real POSTs. Respond with valid TwiML so the URL passes
+   Twilio's reachability check. */
+router.get("/webhooks/whatsapp", (req: Request, res: Response) => {
+  logWebhookHit(req);
+  res.set("Content-Type", "text/xml");
+  res.status(200).send(EMPTY_TWIML);
 });
 
 /* ── POST /webhooks/whatsapp ─────────────────────────────────── */
 router.post("/webhooks/whatsapp", (req: Request, res: Response) => {
-  /* Log EVERY hit unconditionally — useful when Twilio's request
-     isn't reaching us in the expected shape (or at all). */
-  console.log("WEBHOOK HIT at", new Date().toISOString());
-  console.log("Headers:", JSON.stringify(req.headers));
-  console.log("Body:", JSON.stringify(req.body));
-  /* Also keep the pretty-printed raw payload for quick eyeballing. */
-  console.log("RAW WEBHOOK BODY:", JSON.stringify(req.body, null, 2));
+  logWebhookHit(req);
 
-  /* Acknowledge Twilio immediately so the request never times out, no
-     matter what our downstream processing does. */
+  /* Acknowledge Twilio FIRST with a valid TwiML MessagingResponse,
+     BEFORE any async processing. If we ever throw downstream,
+     Twilio has already seen a 200 + valid XML and won't retry. */
   res.set("Content-Type", "text/xml");
-  res.status(200).send("<Response></Response>");
+  res.status(200).send(EMPTY_TWIML);
 
   /* ── Process after the response is sent ── */
   try {
