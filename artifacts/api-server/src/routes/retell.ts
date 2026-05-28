@@ -9,8 +9,7 @@ const router: IRouter = Router();
    return TwiML that connects Twilio's audio leg to Retell's media
    websocket. */
 router.post("/voice", async (req: Request, res: Response) => {
-  console.log("VOICE WEBHOOK HIT at", new Date().toISOString());
-  console.log("Twilio body:", JSON.stringify(req.body));
+  console.log("VOICE CALL IN:", req.body);
 
   const apiKey = process.env["RETELL_API_KEY"];
   const agentId = process.env["RETELL_AGENT_ID"];
@@ -40,20 +39,14 @@ router.post("/voice", async (req: Request, res: Response) => {
       }),
     });
 
-    const text = await retellRes.text();
-    console.log("Retell status:", retellRes.status);
-    console.log("Retell response:", text);
+    const data = (await retellRes.json()) as { call_id?: string };
+    console.log("RETELL RESPONSE:", JSON.stringify(data));
 
-    if (!retellRes.ok) {
-      res.set("Content-Type", "text/xml");
-      res.status(200).send(
-        '<?xml version="1.0" encoding="UTF-8"?><Response><Say>Sorry, we could not connect your call right now. Please try again later.</Say><Hangup/></Response>'
-      );
-      return;
+    if (!retellRes.ok || !data.call_id) {
+      throw new Error(`Retell create-phone-call failed (${retellRes.status})`);
     }
 
-    const parsed = JSON.parse(text) as { call_id?: string };
-    const callId = parsed.call_id ?? "";
+    const callId = data.call_id;
     const twiml =
       '<?xml version="1.0" encoding="UTF-8"?>' +
       '<Response>' +
@@ -66,10 +59,11 @@ router.post("/voice", async (req: Request, res: Response) => {
     res.set("Content-Type", "text/xml");
     res.status(200).send(twiml);
   } catch (err) {
-    console.error("Voice bridge error:", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("VOICE ERROR:", msg);
     res.set("Content-Type", "text/xml");
-    res.status(200).send(
-      '<?xml version="1.0" encoding="UTF-8"?><Response><Say>Sorry, an unexpected error occurred. Please try again.</Say><Hangup/></Response>'
+    res.send(
+      '<?xml version="1.0" encoding="UTF-8"?><Response><Say>Sorry, we are experiencing technical difficulties. Please call back shortly.</Say></Response>'
     );
   }
 });

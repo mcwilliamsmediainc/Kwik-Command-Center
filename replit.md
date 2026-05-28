@@ -9,7 +9,13 @@ _Replace the heading above with the project's name, and this line with one sente
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env:
+  - `DATABASE_URL` — Postgres connection string
+  - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID`, `TWILIO_WHATSAPP_NUMBER` — Twilio WhatsApp dispatch
+  - `RETELL_API_KEY`, `RETELL_AGENT_ID` — Retell AI voice bridge (`POST /api/voice`)
+  - `ANTHROPIC_KEY` — Ryder AI draft generation
+  - `SESSION_SECRET` — Express session signing
+  - `GOOGLE_PLACES_API_KEY` — Scout reviews
 
 ## Stack
 
