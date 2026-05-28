@@ -2,15 +2,16 @@ import { Router, type IRouter, type Request, type Response } from "express";
 
 const router: IRouter = Router();
 
-/* ── POST /voice ─────────────────────────────────────────────────
-   Twilio Voice webhook → Retell bridge.
-   Twilio POSTs the standard voice form fields when a call comes in;
-   we register the call with Retell's /v2/create-phone-call and
-   return TwiML that connects Twilio's audio leg to Retell's media
-   websocket. */
-router.post("/voice", async (req: Request, res: Response) => {
-  console.log("VOICE CALL IN:", req.body);
-
+/* ── Shared voice bridge handler ─────────────────────────────────
+   Registers the call with Retell and returns TwiML connecting the
+   Twilio audio leg to Retell's media websocket. Used by both POST
+   (Twilio's normal config) and GET (defensive fallback for setups
+   that send GET instead). */
+async function handleVoiceCall(
+  from: string | undefined,
+  to: string | undefined,
+  res: Response
+): Promise<void> {
   const apiKey = process.env["RETELL_API_KEY"];
   const agentId = process.env["RETELL_AGENT_ID"];
   if (!apiKey || !agentId) {
@@ -22,8 +23,6 @@ router.post("/voice", async (req: Request, res: Response) => {
     return;
   }
 
-  const body = req.body as { From?: string; To?: string };
-
   try {
     const retellRes = await fetch("https://api.retellai.com/v2/create-phone-call", {
       method: "POST",
@@ -33,8 +32,8 @@ router.post("/voice", async (req: Request, res: Response) => {
       },
       body: JSON.stringify({
         agent_id: agentId,
-        from_number: body.From ?? "",
-        to_number: body.To ?? "",
+        from_number: from ?? "",
+        to_number: to ?? "",
         metadata: {},
       }),
     });
@@ -66,6 +65,23 @@ router.post("/voice", async (req: Request, res: Response) => {
       '<?xml version="1.0" encoding="UTF-8"?><Response><Say>Sorry, we are experiencing technical difficulties. Please call back shortly.</Say></Response>'
     );
   }
+}
+
+/* ── POST /voice ───────── Twilio normal config ───────────────── */
+router.post("/voice", (req: Request, res: Response) => {
+  console.log("VOICE CALL IN:", req.body);
+  const body = req.body as { From?: string; To?: string };
+  void handleVoiceCall(body.From, body.To, res);
+});
+
+/* ── GET /voice ───────── defensive fallback ──────────────────────
+   Some Twilio numbers are configured with HTTP GET instead of POST
+   (legacy TwiML Bin migrations, copy-paste of the wrong method).
+   Mirror the POST behavior so calls bridge either way. */
+router.get("/voice", (req: Request, res: Response) => {
+  console.log("VOICE CALL GET:", req.query);
+  const q = req.query as { From?: string; To?: string };
+  void handleVoiceCall(q.From, q.To, res);
 });
 
 /* ── POST /retell-voice ──────────────────────────────────────────
