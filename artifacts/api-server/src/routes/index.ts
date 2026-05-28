@@ -6,6 +6,7 @@ import hcpRouter from "./hcp";
 import scoutRouter from "./scout";
 import dispatchRouter from "./dispatch";
 import profileRouter from "./profile";
+import retellRouter from "./retell";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(hcpRouter);
 router.use(scoutRouter);
 router.use(dispatchRouter);
 router.use(profileRouter);
+router.use(retellRouter);
 
 export default router;
