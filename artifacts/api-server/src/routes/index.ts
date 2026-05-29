@@ -7,6 +7,7 @@ import scoutRouter from "./scout";
 import dispatchRouter from "./dispatch";
 import profileRouter from "./profile";
 import retellRouter from "./retell";
+import calltrackerRouter from "./calltracker";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(scoutRouter);
 router.use(dispatchRouter);
 router.use(profileRouter);
 router.use(retellRouter);
+router.use(calltrackerRouter);
 
 export default router;

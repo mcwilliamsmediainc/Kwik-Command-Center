@@ -1,5 +1,15 @@
 import { useEffect, useState } from "react";
-import { Star, ExternalLink, ArrowUpRight } from "lucide-react";
+import { Star, ExternalLink, ArrowUpRight, Phone, TrendingUp, Award } from "lucide-react";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Cell,
+  CartesianGrid,
+} from "recharts";
 
 /* ── Types ────────────────────────────────────────────────────── */
 interface Review {
@@ -27,6 +37,32 @@ interface LeadSourcesData {
   month: string;
   totalJobs: number;
   sources: LeadSource[];
+  syncedAt: string;
+}
+interface CtSourceStat {
+  label: string;
+  calls: number;
+  booked: number;
+  conversionRate: number;
+}
+interface CtWindow {
+  days: number;
+  totalCalls: number;
+  totalBooked: number;
+  conversionRate: number;
+  sources: CtSourceStat[];
+}
+interface CtWeeklyPoint {
+  weekStart: string;
+  label: string;
+  calls: number;
+  booked: number;
+}
+interface CallTrackerData {
+  totalCalls: number;
+  windows: CtWindow[];
+  weekly: CtWeeklyPoint[];
+  topSources: string[];
   syncedAt: string;
 }
 
@@ -120,6 +156,11 @@ export function ScoutPage() {
   const [sourcesErr,    setSourcesErr]    = useState<string | null>(null);
   const [sourcesLoading, setSourcesLoading] = useState(true);
 
+  const [ctData,    setCtData]    = useState<CallTrackerData | null>(null);
+  const [ctErr,     setCtErr]     = useState<string | null>(null);
+  const [ctLoading, setCtLoading] = useState(true);
+  const [ctDays,    setCtDays]    = useState<30 | 60 | 90>(30);
+
   useEffect(() => {
     fetch("/api/scout/reviews")
       .then(r => r.json())
@@ -138,6 +179,15 @@ export function ScoutPage() {
       })
       .catch(e => setSourcesErr(String(e)))
       .finally(() => setSourcesLoading(false));
+
+    fetch("/api/calltracker/leads")
+      .then(r => r.json())
+      .then((d: CallTrackerData & { error?: string }) => {
+        if (d.error) { setCtErr(d.error); }
+        else          { setCtData(d); }
+      })
+      .catch(e => setCtErr(String(e)))
+      .finally(() => setCtLoading(false));
   }, []);
 
   /* ── Derived values ── */
@@ -293,6 +343,15 @@ export function ScoutPage() {
         </div>
       </div>
 
+      {/* ── Call Tracker — full width ── */}
+      <CallTrackerSection
+        data={ctData}
+        loading={ctLoading}
+        err={ctErr}
+        days={ctDays}
+        onDaysChange={setCtDays}
+      />
+
       {/* ── Recent Reviews — full width ── */}
       <div className="bg-white rounded-lg overflow-hidden" style={{ border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
         <div className="px-5 py-3.5 flex items-center justify-between" style={{ borderBottom: "1px solid #f0f0f0" }}>
@@ -372,6 +431,182 @@ export function ScoutPage() {
         )}
       </div>
 
+    </div>
+  );
+}
+
+/* ── Call Tracker section ─────────────────────────────────────── */
+function CallTrackerSection({
+  data,
+  loading,
+  err,
+  days,
+  onDaysChange,
+}: {
+  data: CallTrackerData | null;
+  loading: boolean;
+  err: string | null;
+  days: 30 | 60 | 90;
+  onDaysChange: (d: 30 | 60 | 90) => void;
+}) {
+  const win = data?.windows.find((w) => w.days === days) ?? null;
+  const topSet = new Set(data?.topSources ?? []);
+
+  return (
+    <div className="bg-white rounded-lg overflow-hidden" style={{ border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+      {/* header */}
+      <div className="px-5 py-3.5 flex items-center justify-between" style={{ borderBottom: "1px solid #f0f0f0" }}>
+        <div className="flex items-center gap-2">
+          <Phone className="w-4 h-4" style={{ color: "#2b4fac" }} />
+          <p className="text-sm font-bold" style={{ color: "#1a2333" }}>Call Tracker — Lead Source Performance</p>
+        </div>
+        <div className="flex items-center gap-1">
+          {([30, 60, 90] as const).map((d) => (
+            <button
+              key={d}
+              onClick={() => onDaysChange(d)}
+              data-testid={`button-ct-window-${d}`}
+              className="text-xs font-semibold px-2.5 py-1 rounded-md transition-colors"
+              style={
+                d === days
+                  ? { backgroundColor: "#2b4fac", color: "#fff" }
+                  : { backgroundColor: "#f1f5f9", color: "#475569" }
+              }
+            >
+              {d}d
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="px-5 py-6 space-y-3">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="space-y-2">
+              <div className="flex justify-between"><Skeleton w="w-28" /><Skeleton w="w-16" /></div>
+              <Skeleton w="w-full" h="h-2" />
+            </div>
+          ))}
+        </div>
+      ) : err ? (
+        <div className="px-5 py-6">
+          <p className="text-sm font-medium mb-1" style={{ color: "#1a2333" }}>Call tracker unavailable</p>
+          <p className="text-xs" style={{ color: "#ef4444" }}>{err}</p>
+          <p className="text-xs mt-2" style={{ color: "#6b7a90" }}>
+            This reads the call-center Google Sheet. Make sure the Google Sheets connection is authorized and the sheet is shared with the connected account.
+          </p>
+        </div>
+      ) : !win || data?.totalCalls === 0 ? (
+        <div className="px-5 py-6">
+          <p className="text-xs" style={{ color: "#6b7a90" }}>No call data found in the tracker sheet yet.</p>
+        </div>
+      ) : (
+        <div className="px-5 py-4 space-y-5">
+          {/* KPI strip */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-lg px-3 py-2.5" style={{ backgroundColor: "#f8fafc", border: "1px solid #eef2f7" }}>
+              <p className="text-[10px] font-semibold uppercase mb-1" style={{ color: "#6b7a90", letterSpacing: "0.5px" }}>Calls ({days}d)</p>
+              <p className="text-2xl font-bold" style={{ color: "#1a2333" }}>{win.totalCalls}</p>
+            </div>
+            <div className="rounded-lg px-3 py-2.5" style={{ backgroundColor: "#f0fdf4", border: "1px solid #dcfce7" }}>
+              <p className="text-[10px] font-semibold uppercase mb-1" style={{ color: "#15803d", letterSpacing: "0.5px" }}>Booked</p>
+              <p className="text-2xl font-bold" style={{ color: "#15803d" }}>{win.totalBooked}</p>
+            </div>
+            <div className="rounded-lg px-3 py-2.5" style={{ backgroundColor: "#eff6ff", border: "1px solid #dbeafe" }}>
+              <p className="text-[10px] font-semibold uppercase mb-1" style={{ color: "#1e40af", letterSpacing: "0.5px" }}>Conversion</p>
+              <p className="text-2xl font-bold" style={{ color: "#1e40af" }}>{win.conversionRate}%</p>
+            </div>
+          </div>
+
+          {/* top converting sources */}
+          {topSet.size > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="flex items-center gap-1 text-xs font-semibold" style={{ color: "#a16207" }}>
+                <Award className="w-3.5 h-3.5" /> Top converting:
+              </span>
+              {data?.topSources.map((s) => (
+                <span key={s} className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: "#fefce8", color: "#854d0e", border: "1px solid #fde68a" }}>
+                  {s}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* two-column: source breakdown + conversion-by-source chart */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* lead source breakdown */}
+            <div>
+              <p className="text-xs font-bold uppercase mb-3" style={{ color: "#6b7a90", letterSpacing: "0.5px" }}>
+                Lead Source Breakdown
+              </p>
+              <div className="space-y-3">
+                {win.sources.map((s, i) => {
+                  const pct = win.totalCalls ? Math.round((s.calls / win.totalCalls) * 100) : 0;
+                  const highlight = topSet.has(s.label);
+                  return (
+                    <div key={s.label}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-sm font-medium flex items-center gap-1" style={{ color: "#1a2333" }}>
+                          {highlight && <Award className="w-3 h-3" style={{ color: "#eab308" }} />}
+                          {s.label}
+                        </span>
+                        <span className="text-xs font-semibold" style={{ color: "#6b7a90" }}>
+                          {s.calls} calls · {s.booked} booked · {s.conversionRate}%
+                        </span>
+                      </div>
+                      <AnimatedBar pct={pct} color={sourceColor(i)} />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* conversion rate by source */}
+            <div>
+              <p className="text-xs font-bold uppercase mb-3" style={{ color: "#6b7a90", letterSpacing: "0.5px" }}>
+                Conversion Rate by Source
+              </p>
+              <ResponsiveContainer width="100%" height={Math.max(160, win.sources.length * 34)}>
+                <BarChart data={win.sources} layout="vertical" margin={{ top: 0, right: 24, bottom: 0, left: 8 }}>
+                  <CartesianGrid horizontal={false} stroke="#f0f2f5" />
+                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: "#94a3b8" }} unit="%" />
+                  <YAxis type="category" dataKey="label" width={80} tick={{ fontSize: 11, fill: "#475569" }} />
+                  <Tooltip formatter={(v: number) => [`${v}%`, "Conversion"]} cursor={{ fill: "#f8fafc" }} />
+                  <Bar dataKey="conversionRate" radius={[0, 4, 4, 0]}>
+                    {win.sources.map((s, i) => (
+                      <Cell key={s.label} fill={topSet.has(s.label) ? "#eab308" : sourceColor(i)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* weekly call volume trend */}
+          <div>
+            <p className="flex items-center gap-1 text-xs font-bold uppercase mb-3" style={{ color: "#6b7a90", letterSpacing: "0.5px" }}>
+              <TrendingUp className="w-3.5 h-3.5" /> Weekly Call Volume (last 12 weeks)
+            </p>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={data?.weekly ?? []} margin={{ top: 0, right: 8, bottom: 0, left: -16 }}>
+                <CartesianGrid vertical={false} stroke="#f0f2f5" />
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#94a3b8" }} interval={0} />
+                <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} allowDecimals={false} />
+                <Tooltip cursor={{ fill: "#f8fafc" }} />
+                <Bar dataKey="calls" name="Calls" fill="#cbd5e1" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="booked" name="Booked" fill="#2b4fac" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {data?.syncedAt && (
+            <p className="text-[10px]" style={{ color: "#94a3b8" }}>
+              Synced {new Date(data.syncedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} · {data.totalCalls} total calls in sheet
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
