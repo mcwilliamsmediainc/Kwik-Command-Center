@@ -29,9 +29,35 @@ function isBooked(raw: string | undefined): boolean {
   return v === "yes" || v === "y" || v === "true" || v === "1" || v === "booked";
 }
 
+// Canonicalize free-typed lead sources so case/spelling variants
+// ("google" / "Google", "repeat customer" / "repeat cu", "Valpak" /
+// "Valpack") collapse into one bucket. Order matters — first match wins.
+const SOURCE_RULES: Array<{ canon: string; test: (s: string) => boolean }> = [
+  { canon: "Google",          test: (s) => s.includes("google") },
+  { canon: "Repeat Customer", test: (s) => s.includes("repeat") },
+  { canon: "Valpak",          test: (s) => s.includes("valpa") || s.includes("valpack") },
+  { canon: "Referral",        test: (s) => s.includes("referral") || s.includes("refferal") },
+  { canon: "Online Booking",  test: (s) => s.includes("online") || s.includes("website") || s.includes("web ") || s === "web" },
+  { canon: "Coupon",          test: (s) => s.includes("coupon") },
+  { canon: "Flyer / Mail",    test: (s) => s.includes("flyer") || s.includes("mail") || s.includes("mailer") },
+  { canon: "HouseCall Pro",   test: (s) => s === "hcp" || s.includes("housecall") },
+  { canon: "Facebook",        test: (s) => s.includes("facebook") || s.includes("fb") },
+  { canon: "Yelp",            test: (s) => s.includes("yelp") },
+  { canon: "Nextdoor",        test: (s) => s.includes("nextdoor") },
+];
+
 function normSource(raw: string | undefined): string {
   const v = (raw ?? "").trim();
-  return v ? v : "Unknown";
+  if (!v) return "Unknown";
+  const lower = v.toLowerCase();
+  for (const rule of SOURCE_RULES) {
+    if (rule.test(lower)) return rule.canon;
+  }
+  // Title-case unknown one/two-word sources; longer free-text → "Other".
+  if (v.split(/\s+/).length > 3) return "Other";
+  return v
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 // Accepts common spreadsheet date formats (M/D/YYYY, YYYY-MM-DD, etc.)
@@ -77,8 +103,12 @@ interface LeadsPayload {
 
 /* ── aggregation ──────────────────────────────────────────────── */
 function aggregateWindow(rows: CallRow[], days: number, now: Date): WindowBreakdown {
-  const cutoff = now.getTime() - days * 24 * 60 * 60 * 1000;
-  const inWindow = rows.filter((r) => r.date && r.date.getTime() >= cutoff);
+  const nowMs = now.getTime();
+  const cutoff = nowMs - days * 24 * 60 * 60 * 1000;
+  // Bound both ends so future-dated rows (data-entry mistakes) don't skew KPIs.
+  const inWindow = rows.filter(
+    (r) => r.date && r.date.getTime() >= cutoff && r.date.getTime() <= nowMs,
+  );
 
   const map = new Map<string, { calls: number; booked: number }>();
   for (const r of inWindow) {
@@ -157,13 +187,15 @@ router.get("/calltracker/leads", async (req, res) => {
 
     const values = await getSheetValues(SHEET_ID, RANGE);
     if (values.length < 2) {
-      res.json({
+      const empty: LeadsPayload = {
         totalCalls: 0,
         windows: [30, 60, 90].map((d) => ({ days: d, totalCalls: 0, totalBooked: 0, conversionRate: 0, sources: [] })),
         weekly: [],
         topSources: [],
         syncedAt: new Date().toISOString(),
-      } satisfies LeadsPayload);
+      };
+      cached = { data: empty, expiresAt: Date.now() + TTL_MS };
+      res.json(empty);
       return;
     }
 

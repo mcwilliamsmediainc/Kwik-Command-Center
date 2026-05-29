@@ -16,6 +16,7 @@ _Replace the heading above with the project's name, and this line with one sente
   - `ANTHROPIC_KEY` — Ryder AI draft generation
   - `SESSION_SECRET` — Express session signing
   - `GOOGLE_PLACES_API_KEY` — Scout reviews
+- Google Sheets (Call Tracker) uses the Replit Google Sheets connector (OAuth, no secret/service-account JSON). Auth/token refresh handled by `@replit/connectors-sdk` via the connector proxy.
 
 ## Stack
 
