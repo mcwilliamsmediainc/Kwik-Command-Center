@@ -8,6 +8,7 @@ import dispatchRouter from "./dispatch";
 import profileRouter from "./profile";
 import retellRouter from "./retell";
 import calltrackerRouter from "./calltracker";
+import quickbooksRouter from "./quickbooks";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(dispatchRouter);
 router.use(profileRouter);
 router.use(retellRouter);
 router.use(calltrackerRouter);
+router.use(quickbooksRouter);
 
 export default router;

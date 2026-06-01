@@ -10,9 +10,14 @@ import { Badge } from "@/components/ui/badge";
 interface FinancialsSummary {
   totalRevenue: number; totalJobItems: number; jobCount: number;
   avgJobValue: number; outstandingTotal: number;
+  outstandingInvoices: { id: string; amount: number }[];
   revenueByCategory: { label: string; amount: number }[];
   techs: { name: string; jobs: number; revenue: number; pay: number }[];
   payrollTotal: number; syncedAt: string;
+}
+interface BankBalanceData {
+  accountName: string | null; currentBalance: number;
+  accounts: { name: string; balance: number }[]; syncedAt: string;
 }
 interface ReviewsData { rating: number; totalReviews: number; reviews: { author: string; rating: number; text: string; when: string }[] }
 interface JobsData { jobs: { status: string }[]; total_items: number }
@@ -35,17 +40,20 @@ export function Dashboard() {
   const [reviews,   setReviews]   = useState<ReviewsData | null>(null);
   const [openJobs,  setOpenJobs]  = useState<number | null>(null);
   const [ryder,     setRyder]     = useState<StatsData | null>(null);
+  const [bank,      setBank]      = useState<BankBalanceData | null>(null);
   const [loading,   setLoading]   = useState(true);
 
   const load = useCallback(async () => {
-    const [finRes, revRes, jobsRes, statsRes] = await Promise.allSettled([
+    const [finRes, revRes, jobsRes, statsRes, bankRes] = await Promise.allSettled([
       fetch("/api/hcp/financials").then(r => r.json()),
       fetch("/api/scout/reviews").then(r => r.json()),
       fetch("/api/hcp/jobs?date=today&page_size=200").then(r => r.json()),
       fetch("/api/stats/today").then(r => r.json()),
+      fetch("/api/quickbooks/bank-balance").then(r => r.json()),
     ]);
     if (finRes.status === "fulfilled" && !finRes.value.error)   setFin(finRes.value as FinancialsSummary);
     if (revRes.status === "fulfilled" && !revRes.value.error)   setReviews(revRes.value as ReviewsData);
+    if (bankRes.status === "fulfilled" && !bankRes.value.error) setBank(bankRes.value as BankBalanceData);
     if (jobsRes.status === "fulfilled" && !jobsRes.value.error) {
       const j = jobsRes.value as JobsData;
       const open = (j.jobs ?? []).filter((job: { status: string }) =>
@@ -105,7 +113,7 @@ export function Dashboard() {
     <div className="space-y-5">
 
       {/* ── KPI row ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <KpiCard
           title="Revenue MTD"
           value={loading ? "—" : fmt$(fin?.totalRevenue ?? 0)}
@@ -135,6 +143,22 @@ export function Dashboard() {
           topBorderColor={openJobs === 0 ? "#3db54a" : "#d97706"}
           trend={openJobs === 0 ? "No scheduled or in-progress jobs" : "scheduled + in progress"}
           trendUp={openJobs === 0}
+        />
+        <KpiCard
+          title="Open Invoices"
+          value={loading ? "—" : fin ? `${fin.outstandingInvoices?.length ?? 0} unpaid` : "unavailable"}
+          accentColor="#d97706" topBorderColor="#d97706"
+          trend={fin ? `${fmt$(fin.outstandingTotal)} outstanding` : "loading…"}
+          trendUp={false}
+          subtext={fin ? "HouseCall Pro" : ""}
+        />
+        <KpiCard
+          title="Bank Balance"
+          value={loading ? "—" : bank ? fmt$(bank.currentBalance) : "unavailable"}
+          accentColor="#0891b2" topBorderColor="#0891b2"
+          trend={bank ? "QuickBooks · live" : "checking…"}
+          trendUp={true}
+          subtext={bank?.accountName ?? ""}
         />
       </div>
 
