@@ -80,7 +80,7 @@ const FALLBACK_PROFILE: BusinessProfile = {
     { name: "Air Duct Cleaning", min_price: 199, description: "Whole house up to 10 vents $199; each additional vent $30. Permanent electrostatic air filter $125. EPA-approved method.", active: true },
     { name: "Dryer Vent",        min_price: 99,  description: "Through side wall $99; through roof $149. $50 off when done together with air duct cleaning.", active: true },
     { name: "Tile & Grout",      min_price: 99,  description: "First 2 areas (or 200 sq ft) $99; additional $0.50/sq ft. Grout color sealing $1.00/sq ft. Shower walls & floors $1.50/sq ft.", active: true },
-    { name: "Mattress",          min_price: 69,  description: "Price is per side - Twin $69, Queen $89, King $109. 2nd side 50% off the first side.", active: true },
+    { name: "Mattress",          min_price: 69,  description: "Price is per side - Twin $69, Full/Double $79, Queen $89, King $109. 2nd side 50% off the first side.", active: true },
     { name: "Wood Floor",        min_price: 150, description: "Sandless clean, seal & refinish $1.50/sq ft (includes cleaning + 2 coats sealant). Extra gloss coat +$0.25/sq ft.", active: true },
   ],
   pricing_notes: [
