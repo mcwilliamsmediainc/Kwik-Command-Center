@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useProfile } from "@/context/ProfileContext";
+import { useProfile, buildRyderDraftSystem } from "@/context/ProfileContext";
 import { useToast } from "@/hooks/use-toast";
 import {
   MessageCircle,
@@ -361,15 +361,24 @@ export function DispatchPage() {
     setDraftLoading(true);
     setDraft("");
     try {
-      const lastCustomerMsg =
-        [...activeThread.messages].reverse().find((m) => m.from === "customer")?.text ?? "Hello";
+      const transcript = activeThread.messages
+        .map((m) => {
+          const who = m.from === "customer" ? "Customer" : m.from === "system" ? "Note" : profile.business_short_name;
+          return `${who}: ${m.text}`;
+        })
+        .join("\n");
 
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          system: `You are ${ryderName}, the AI assistant for ${profile.business_name}. Write a short, warm, professional reply draft for the following customer situation. Keep it under 3 sentences. End with a gentle call to action. Booking link: ${profile.booking_url}. Phone: ${profile.phone}. Context: ${activeThread.draftContext}`,
-          messages: [{ role: "user", content: lastCustomerMsg }],
+          system: buildRyderDraftSystem(profile),
+          messages: [
+            {
+              role: "user",
+              content: `${activeThread.draftContext ? `Context: ${activeThread.draftContext}\n\n` : ""}Conversation so far (most recent last):\n${transcript}\n\nDraft ${ryderName}'s reply to the customer's most recent message.`,
+            },
+          ],
         }),
       });
 

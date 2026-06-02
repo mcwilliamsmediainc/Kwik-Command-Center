@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useProfile } from "@/context/ProfileContext";
+import { useProfile, buildRyderDraftSystem } from "@/context/ProfileContext";
 import { useToast } from "@/hooks/use-toast";
 import {
   MessageCircle, Mail, Facebook, Send, Edit, UserCheck, Bot,
@@ -165,7 +165,6 @@ function ChannelIcon({ ch }: { ch: Thread["channel"] }) {
 export function InboxPage() {
   const profile = useProfile();
   const ryderName = profile.agents.customer_faq;
-  const RYDER_SYSTEM = `You are ${ryderName}, the AI dispatcher for ${profile.business_name}. Draft warm, professional responses on behalf of ${profile.business_name}. Be concise — 2-4 sentences max. Use the customer context provided. Never make up prices or policies not in the context.`;
   const { toast } = useToast();
 
   const [waMessages,   setWaMessages]   = useState<WaMessage[]>([]);
@@ -255,17 +254,22 @@ export function InboxPage() {
 
   async function handleRyderDraft() {
     if (loadingDraft || !active) return;
-    const lastCustomer = [...active.messages].reverse().find((m) => m.from === "customer")?.text
-      ?? active.messages[active.messages.length - 1]?.text ?? "Hello";
     setLoadingDraft(true);
     try {
+      const transcript = active.messages
+        .map((m) => `${m.from === "customer" ? "Customer" : profile.business_short_name}: ${m.text}`)
+        .join("\n");
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          system: RYDER_SYSTEM,
+          system: buildRyderDraftSystem(profile),
           messages: [
-            { role: "user", content: `Context: ${active.draftContext}\n\nDraft a response to this customer message: "${lastCustomer}"` },
+            {
+              role: "user",
+              content: `${active.draftContext ? `Context: ${active.draftContext}\n\n` : ""}Conversation so far (most recent last):\n${transcript}\n\nDraft ${ryderName}'s reply to the customer's most recent message.`,
+            },
           ],
         }),
       });

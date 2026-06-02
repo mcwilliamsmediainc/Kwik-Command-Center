@@ -1,0 +1,93 @@
+# Ryder — Accurate Knowledge Base + Replit Update
+
+Source of truth: **tulsakwikdry.com/pricing** (verified live, last modified 2026-02-16), cross-checked against your master brief. Use the website figures — they're the public, customer-facing prices.
+
+---
+
+## ⚠️ Discrepancies found (confirm before deploying)
+
+The website and your brief disagree on a few points. The website is almost certainly current; please confirm so Ryder quotes the right number:
+
+1. **Upholstery chair:** website says **$50**, brief said **$55**. → Using **$50**.
+2. **Air duct:** the website body says **$199 (up to 10 vents)** but the section header says **"Starting at $249."** That's a contradiction *on the site itself*. → Using **$199 up to 10 vents** (the detailed line). **Please confirm which is current** — this is your #1 revenue service, so it matters most.
+3. **Mattress "Full/Double":** brief listed **$79**; the website omits Full entirely (only Twin/Queen/King). → Left out unless you confirm $79.
+4. The website lists many add-ons the brief didn't (stairs, closets, halls, ottoman, pillows, dining chairs, $50-off dryer-vent-with-air-duct, $125 electrostatic filters). These are included below.
+
+---
+
+## Verified pricing (what Ryder should quote)
+
+**Minimum charge: $88.** All pricing includes small-furniture moving. Prices are estimates; final quote may require an on-site look for odd sizes/conditions.
+
+**Carpet** (clean, deodorize, disinfect, protect)
+- First 2 rooms: **$88** (oversized/L-shaped or living+dining combo = 2 rooms)
+- Whole house: **$188** (5 rooms + hall)
+- Additional room: **$45** · Single room: **$50** (only with another service)
+- Stairs: **$4 each** · Stair landings: **$8 each** · Walk-in closets: **$20–25** · Halls from **$20**
+- Area/Oriental rugs: **$0.75/sq ft** (cleaned on site) · High-rise fee: **+$30**
+
+**Upholstery** (clean, deodorize, disinfect, protect)
+- Sofa **$95** · Loveseat **$88** · Chair **$50** · All 3 pieces **$188**
+- L-shaped sectional **$145–175** · U-shaped sectional **$175–300** (by size/# seats)
+- Ottoman **$30** · Extra decorator pillows **$10 each** (sofa pillows free) · Dining chairs **$15–25**
+
+**Air Duct** (clean, deodorize, disinfect; EPA-approved, kills COVID-19)
+- Whole house up to 10 vents: **$199** · Each additional vent: **$30**
+- Permanent electrostatic air filter: **$125**
+
+**Dryer Vent** (clean, deodorize, disinfect)
+- Through side wall: **$99** · Through roof: **$149**
+- **$50 off** when done with air duct cleaning
+
+**Tile & Grout** (clean, deodorize, disinfect)
+- First 2 areas (or 200 sq ft): **$99** · Additional: **$0.50/sq ft**
+- Grout color sealing: **$1.00/sq ft** · Shower walls & floors: **$1.50/sq ft**
+
+**Mattress** (clean, deodorize, disinfect, protect; price = one side)
+- Twin **$69** · Queen **$89** · King **$109** · 2nd side **50% off** first side
+
+**Wood Floor** (clean, seal, refinish — sandless)
+- **$1.50/sq ft** (includes cleaning + 2 coats sealant) · Extra gloss coat **+$0.25/sq ft**
+
+**Add-on fees**
+- Move large furniture **+$50** (no entertainment centers, china cabinets, dressers, beds)
+- Hazardous cleanup (blood/vomit/feces) **+$50** · Pick up mess on floors **+$50**
+- Last-minute (24 hr) cancellation/re-book fee **$50**
+
+## Business facts
+
+- **Phone:** (918) 238-2986 · **Email:** tulsakwikdry@gmail.com
+- **Book online:** book.housecallpro.com/book/Tulsa-Kwik-Dry-Total-Cleaning
+- **Address:** 2430 W New Orleans St, Broken Arrow, OK 74011
+- **Hours:** Mon–Sat 7am–10pm (Central)
+- **Service area (14):** Tulsa, Broken Arrow, Bixby, Jenks, Owasso, Sand Springs, Claremore, Glenpool, Collinsville, Catoosa, Coweta, Sapulpa, Skiatook, Wagoner
+- **Why us:** oxygenated citrus method, all-natural & pet-friendly, dry in ~1 hour, no hidden fees, 807 Google reviews @ 4.9★
+
+---
+
+## Replit prompt — update Ryder for accuracy
+
+> Update Ryder's system prompt and the `kwikdry.json` profile so Ryder gives accurate, grounded answers to Dispatch/WhatsApp messages.
+>
+> **1. Replace the pricing/services data** in `server/profiles/kwikdry.json` with the verified figures below (source: tulsakwikdry.com/pricing). [paste the "Verified pricing" + "Business facts" sections above]
+>
+> **2. Add these accuracy guardrails to Ryder's system prompt:**
+> - Only state prices, services, service-area, hours, and policies that are present in the profile data. **Never invent or estimate a price that isn't listed.**
+> - When a customer asks for a quote that depends on size/condition not covered by a flat rate (e.g. large sectionals, sq-ft jobs, unusual stains), give the listed range, then say a firm quote may need a quick look or a photo, and offer the booking link / phone.
+> - If asked something outside the profile (warranty edge cases, scheduling specifics, complaints, anything committing the business), do **not** guess — defer to booking at book.housecallpro.com/book/Tulsa-Kwik-Dry-Total-Cleaning or (918) 238-2986, and route the draft for human approval.
+> - Always quote the **$88 minimum** when a request would fall below it.
+> - Mention relevant bundles when natural (e.g. $50 off dryer vent with air duct; whole-house carpet $188).
+> - Tone: warm, neighborly, concise — like a helpful local, not a brochure.
+>
+> **3. Keep the existing approval flow:** Ryder may auto-draft FAQ/pricing answers, but anything that books, reschedules, commits a price outside the listed ranges, or handles a complaint must show as "Needs Approval" in Dispatch, not auto-send.
+>
+> **4. Confirm** Ryder pulls this data dynamically from the profile on each message (so future edits to kwikdry.json update Ryder without code changes), and that conversation history is included for context.
+
+## After deploying — quick accuracy test
+
+Message these to 317-2910 and check Ryder's drafts in **production** Dispatch:
+- "How much for 3 rooms of carpet?" → should say $88 (first 2) + $45 = **$133**
+- "What's air duct cleaning cost?" → **$199 up to 10 vents** (confirm the $199 vs $249 question first)
+- "Do you clean in Owasso?" → yes (in service area)
+- "Can you do my couch and a recliner?" → sofa $95 + chair $50, may offer all-3 logic / photo for sectionals
+- "Can you come at 6am?" → defer (outside 7am–10pm) → routes to approval/booking

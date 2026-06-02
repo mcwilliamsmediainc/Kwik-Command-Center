@@ -27,6 +27,7 @@ export interface BusinessProfile {
   service_area: string[];
 
   services: Array<{ name: string; min_price: number; description: string; active: boolean }>;
+  pricing_notes?: string[];
 
   technicians: Array<{ name: string; pay_rate: number }>;
   pay_rate_per_job: number;
@@ -74,13 +75,19 @@ const FALLBACK_PROFILE: BusinessProfile = {
     "Skiatook", "Wagoner",
   ],
   services: [
-    { name: "Carpet Cleaning",   min_price: 88,  description: "First 2 rooms $88, whole house $188",      active: true },
-    { name: "Upholstery",        min_price: 55,  description: "Chair $55, sofa $95, sectional $145-$300", active: true },
-    { name: "Air Duct Cleaning", min_price: 199, description: "Up to 10 vents $199",                      active: true },
-    { name: "Dryer Vent",        min_price: 99,  description: "Side wall $99, through roof $149",         active: true },
-    { name: "Tile & Grout",      min_price: 99,  description: "First 2 areas $99",                        active: true },
-    { name: "Mattress",          min_price: 69,  description: "Twin $69 to King $109",                    active: true },
-    { name: "Wood Floor",        min_price: 150, description: "$1.50/sq ft",                              active: true },
+    { name: "Carpet Cleaning",   min_price: 88,  description: "First 2 rooms $88 (oversized/L-shaped or living+dining combo counts as 2 rooms). Whole house (5 rooms + hall) $188. Additional room $45; single room $50 (only with another service). Stairs $4 each, landings $8 each, walk-in closets $20-25, halls from $20. Area/Oriental rugs $0.75/sq ft (cleaned on site). High-rise fee +$30.", active: true },
+    { name: "Upholstery",        min_price: 50,  description: "Sofa $95, loveseat $88, chair $50, all 3 pieces $188. L-shaped sectional $145-175; U-shaped sectional $175-300 (by size/# seats). Ottoman $30. Extra decorator pillows $10 each (sofa pillows free). Dining chairs $15-25.", active: true },
+    { name: "Air Duct Cleaning", min_price: 199, description: "Whole house up to 10 vents $199; each additional vent $30. Permanent electrostatic air filter $125. EPA-approved method.", active: true },
+    { name: "Dryer Vent",        min_price: 99,  description: "Through side wall $99; through roof $149. $50 off when done together with air duct cleaning.", active: true },
+    { name: "Tile & Grout",      min_price: 99,  description: "First 2 areas (or 200 sq ft) $99; additional $0.50/sq ft. Grout color sealing $1.00/sq ft. Shower walls & floors $1.50/sq ft.", active: true },
+    { name: "Mattress",          min_price: 69,  description: "Price is per side - Twin $69, Queen $89, King $109. 2nd side 50% off the first side.", active: true },
+    { name: "Wood Floor",        min_price: 150, description: "Sandless clean, seal & refinish $1.50/sq ft (includes cleaning + 2 coats sealant). Extra gloss coat +$0.25/sq ft.", active: true },
+  ],
+  pricing_notes: [
+    "Minimum charge is $88 on every job - quote it whenever a request would total less. All pricing includes moving small furniture. Prices are estimates; odd sizes or conditions may need an on-site look or a photo for a firm quote.",
+    "Add-on fees: move large furniture +$50 (no entertainment centers, china cabinets, dressers, or beds); hazardous cleanup (blood/vomit/feces) +$50; pick up mess on floors +$50; last-minute (within 24 hr) cancellation/re-book fee $50.",
+    "Bundles & deals: $50 off dryer vent cleaning when done with air duct cleaning; whole-house carpet (5 rooms + hall) $188.",
+    "Why us: oxygenated citrus method, all-natural & pet-friendly, carpets dry in about 1 hour, no hidden fees, and highly rated on Google.",
   ],
   technicians: [
     { name: "Isiah Ervin",     pay_rate: 40 },
@@ -89,7 +96,7 @@ const FALLBACK_PROFILE: BusinessProfile = {
     { name: "Evan Hoover",     pay_rate: 40 },
   ],
   pay_rate_per_job: 40,
-  booking_url: "https://book.housecallpro.com/book/Tulsa-Kwik-Dry",
+  booking_url: "https://book.housecallpro.com/book/Tulsa-Kwik-Dry-Total-Cleaning",
   housecallpro_connected: true,
   quickbooks_connected: true,
   google_place_id: "",
@@ -179,6 +186,10 @@ export function buildBusinessContext(p: BusinessProfile): string {
     .join("\n");
   const areaBlock = p.service_area.join(", ");
   const techBlock = p.technicians.map((t) => t.name).join(", ");
+  const notesBlock =
+    p.pricing_notes && p.pricing_notes.length > 0
+      ? `\n\nPRICING NOTES & POLICIES:\n${p.pricing_notes.map((n) => `- ${n}`).join("\n")}`
+      : "";
 
   return `BUSINESS: ${p.business_name} (${p.industry})
 PHONE: ${p.phone}
@@ -189,9 +200,29 @@ HOURS: ${p.hours}
 BOOKING: ${p.booking_url}
 
 SERVICES & PRICING:
-${servicesBlock}
+${servicesBlock}${notesBlock}
 
 SERVICE AREA: ${areaBlock}
 
 TECHNICIANS: ${techBlock}`;
+}
+
+/* ─── Helper: build Ryder's customer-reply draft system prompt ───────────────
+   Shared by the Dispatch and Inbox draft flows so Ryder always answers from
+   the live profile data (edits to the profile update Ryder with no code
+   change) and follows the same accuracy guardrails + approval flow.        */
+export function buildRyderDraftSystem(p: BusinessProfile): string {
+  const ryderName = p.agents.customer_faq;
+  return `You are ${ryderName}, the customer-facing AI assistant for ${p.business_name}. You draft replies to inbound WhatsApp/SMS customer messages. Every reply you write is a DRAFT that a human reviews and approves before it is sent.
+
+${buildBusinessContext(p)}
+
+ACCURACY GUARDRAILS — follow strictly:
+- Only state prices, services, service-area towns, hours, and policies that appear in the data above. NEVER invent or estimate a price, service, or policy that isn't listed.
+- The minimum charge is $88 — quote it whenever a request would total less than that.
+- For size- or condition-dependent jobs (large sectionals, per-sq-ft work, unusual stains), give the listed range, then say a firm quote may need a quick look or a photo, and offer the booking link or phone.
+- For anything outside this data (warranty edge cases, specific scheduling/availability, complaints, or anything that commits the business), do NOT guess — point the customer to booking at ${p.booking_url} or call ${p.phone}; a human will review your draft before it sends.
+- Mention relevant bundles when it's natural (e.g. $50 off dryer vent with air duct cleaning; whole-house carpet $188).
+
+TONE: warm, neighborly, and concise (2–4 sentences) — like a helpful local, not a brochure.`;
 }

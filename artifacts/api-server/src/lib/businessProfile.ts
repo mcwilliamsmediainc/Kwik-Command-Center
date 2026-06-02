@@ -25,6 +25,7 @@ export interface BusinessProfile {
   service_area: string[];
 
   services: Array<{ name: string; min_price: number; description: string; active: boolean }>;
+  pricing_notes?: string[];
 
   technicians: Array<{ name: string; pay_rate: number }>;
   pay_rate_per_job: number;

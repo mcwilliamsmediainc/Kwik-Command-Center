@@ -23,13 +23,20 @@
   ],
 
   "services": [
-    { "name": "Carpet Cleaning",   "min_price": 88,  "description": "First 2 rooms $88, whole house $188",       "active": true },
-    { "name": "Upholstery",        "min_price": 55,  "description": "Chair $55, sofa $95, sectional $145-$300",  "active": true },
-    { "name": "Air Duct Cleaning", "min_price": 199, "description": "Up to 10 vents $199",                       "active": true },
-    { "name": "Dryer Vent",        "min_price": 99,  "description": "Side wall $99, through roof $149",          "active": true },
-    { "name": "Tile & Grout",      "min_price": 99,  "description": "First 2 areas $99",                         "active": true },
-    { "name": "Mattress",          "min_price": 69,  "description": "Twin $69 to King $109",                     "active": true },
-    { "name": "Wood Floor",        "min_price": 150, "description": "$1.50/sq ft",                               "active": true }
+    { "name": "Carpet Cleaning",   "min_price": 88,  "description": "First 2 rooms $88 (oversized/L-shaped or living+dining combo counts as 2 rooms). Whole house (5 rooms + hall) $188. Additional room $45; single room $50 (only with another service). Stairs $4 each, landings $8 each, walk-in closets $20-25, halls from $20. Area/Oriental rugs $0.75/sq ft (cleaned on site). High-rise fee +$30.", "active": true },
+    { "name": "Upholstery",        "min_price": 50,  "description": "Sofa $95, loveseat $88, chair $50, all 3 pieces $188. L-shaped sectional $145-175; U-shaped sectional $175-300 (by size/# seats). Ottoman $30. Extra decorator pillows $10 each (sofa pillows free). Dining chairs $15-25.", "active": true },
+    { "name": "Air Duct Cleaning", "min_price": 199, "description": "Whole house up to 10 vents $199; each additional vent $30. Permanent electrostatic air filter $125. EPA-approved method.", "active": true },
+    { "name": "Dryer Vent",        "min_price": 99,  "description": "Through side wall $99; through roof $149. $50 off when done together with air duct cleaning.", "active": true },
+    { "name": "Tile & Grout",      "min_price": 99,  "description": "First 2 areas (or 200 sq ft) $99; additional $0.50/sq ft. Grout color sealing $1.00/sq ft. Shower walls & floors $1.50/sq ft.", "active": true },
+    { "name": "Mattress",          "min_price": 69,  "description": "Price is per side - Twin $69, Queen $89, King $109. 2nd side 50% off the first side.", "active": true },
+    { "name": "Wood Floor",        "min_price": 150, "description": "Sandless clean, seal & refinish $1.50/sq ft (includes cleaning + 2 coats sealant). Extra gloss coat +$0.25/sq ft.", "active": true }
+  ],
+
+  "pricing_notes": [
+    "Minimum charge is $88 on every job - quote it whenever a request would total less. All pricing includes moving small furniture. Prices are estimates; odd sizes or conditions may need an on-site look or a photo for a firm quote.",
+    "Add-on fees: move large furniture +$50 (no entertainment centers, china cabinets, dressers, or beds); hazardous cleanup (blood/vomit/feces) +$50; pick up mess on floors +$50; last-minute (within 24 hr) cancellation/re-book fee $50.",
+    "Bundles & deals: $50 off dryer vent cleaning when done with air duct cleaning; whole-house carpet (5 rooms + hall) $188.",
+    "Why us: oxygenated citrus method, all-natural & pet-friendly, carpets dry in about 1 hour, no hidden fees, and highly rated on Google."
   ],
 
   "technicians": [
@@ -40,7 +47,7 @@
   ],
   "pay_rate_per_job": 40,
 
-  "booking_url": "https://book.housecallpro.com/book/Tulsa-Kwik-Dry",
+  "booking_url": "https://book.housecallpro.com/book/Tulsa-Kwik-Dry-Total-Cleaning",
   "housecallpro_connected": true,
   "quickbooks_connected": true,
   "google_place_id": "",
