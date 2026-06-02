@@ -1,0 +1,104 @@
+{
+  "_meta": {
+    "tenant": "kwikdry",
+    "purpose": "Customer-response playbook for the Ryder agent. Use these exact scripts and policies when answering matching customer questions. Preserve wording and pricing. Structure is generic and reusable for other LLS tenants.",
+    "last_updated": "2026-06-01"
+  },
+
+  "booking_intake_checklist": {
+    "_note": "Internal checks to run before confirming any online booking. Not customer-facing.",
+    "service_area_rule": "We service locations within 45 minutes of Broken Arrow, OK. If the city is farther than 45 minutes, it is out of our area.",
+    "checks": [
+      "Confirm location is 45 min or shorter from Broken Arrow, OK.",
+      "Is the assigned technician free at this time or double-booked?",
+      "Are the appointments evenly distributed across the day?",
+      "Has the system booked appropriate time frames for the service?",
+      "Reply in the appointment inbox (where you chat with the client about the appointment), not the job inbox."
+    ],
+    "scheduling_line_to_append": "Our schedule openings are 8 AM, 11 AM, and 2 PM on most days. If you could respond with two or three days and times that work for you and include your service address, I'm happy to help you get on the schedule."
+  },
+
+  "service_intake_scripts": {
+    "air_duct": {
+      "intake": "Hi there! Thank you for booking with us. To ensure we've scheduled enough time and can provide you with an accurate estimate, could you please let me know how many vents you have in your home, including return vents? Our special includes up to 10 vents/returns, and anything over that is $30 each. I'll adjust the time and invoice accordingly once I have your count. Thank you, and we look forward to working with you!",
+      "wants_only_some_cleaned": "We recommend cleaning all of the air ducts at the same time. If only a few are cleaned, the remaining dirty ducts can still circulate dust and debris throughout your home when the system is running, which defeats the purpose of the cleaning. A full-system cleaning ensures the best results and a truly fresh, clean airflow."
+    },
+    "dryer_vent": {
+      "intake": "Hi there! The price for a dryer cleaning is $149 if it exits through the roof or $99 if it exits through the wall."
+    },
+    "area_rugs": {
+      "intake": "Hi! Thanks for booking with us. Can you send the dimensions of your rug? We charge $0.75/sq ft, with a minimum of $88 if it falls below that. Thanks — excited to work with you!",
+      "wool_warning": "We look forward to seeing you soon! Just so you're aware, Wool is very porous, so while we do our best to extract as much moisture as possible during the cleaning process, a very strong odor is common until the rug is fully dry, which in some cases could take a few days. This is completely normal, and the smell will dissipate once drying is complete. Thanks for choosing Kwik Dry!",
+      "below_minimum": "Hi! Thanks so much for booking with us. An (8x10) rug at $0.75/sq ft comes to ($60), which falls below our minimum service charge of $88. I'll go ahead and adjust the invoice to reflect that. We're looking forward to seeing you next week and are excited to work with you!",
+      "pickup_dropoff": "We do not have a location available for rug drop off. We can clean the rug in your home or we can schedule a pick up. There is a $30 pick up/drop off fee and our turnaround time is 5 business days to return the rug. If outside our area, the initial travel fee still applies. (Total $60 in fees if outside the area)"
+    },
+    "whole_house_special": {
+      "intake": "Hi there! Thank you for booking with us. To ensure we've scheduled enough time and can provide you with an accurate estimate, just a few quick questions: Are there any walk-in closets, additional hallways, stairs, or landings we should be aware of? Please note, landings and stairs are $4 each, hallways are $20, and walk-in closets are $20. Also, due to insurance restrictions, we are unable to move large pieces of furniture. Small items, however, can be placed on sliders if needed. Thanks so much for your help — we look forward to working with you!",
+      "add_on_pricing": {
+        "landings": 4,
+        "stairs": 4,
+        "hallways": 20,
+        "walk_in_closets": 20
+      }
+    },
+    "hardwoods": {
+      "intake": "Hi there! Thank you for booking with us. To ensure we schedule enough time and provide an accurate estimate, could you please let me know the total square footage of hardwood flooring you have? Additionally, will there be furniture that needs to be moved? If so, we'll need to assess the amount and type of furniture to give you an accurate quote for moving services. Thanks so much — we look forward to working with you!"
+    },
+    "tile": {
+      "intake": "Hi there! Thank you for booking with us. To ensure we schedule enough time and provide an accurate estimate, could you please let me know the total square footage of tile? Thanks so much — we look forward to working with you!"
+    },
+    "sectionals": {
+      "intake": "Hi there! Thank you for booking with us. Sectional cleaning ranges from $155–$325 depending on size and cushion style. If you'd like an estimate before your appointment, feel free to text or email us a photo. Otherwise, we'll assess it and provide an exact price when we arrive. Thanks so much—we look forward to working with you!",
+      "how_to_measure": "It's actually based on the amount of time it will take us. The thickness, depth and length (how many it can seat) determines that. A rough way of calculating it is to break it apart and fit it into our standard sofa, loveseat, and/or chair w/ ottoman pricing. Example: a standard 3-seater sofa section is $95, a 2-seater loveseat section is $88, another loveseat-sized section is $88. If all the back cushions are detachable and both sides need to be cleaned, that takes more time, so add $30. If it's extra deep, add another $30.",
+      "reference_pricing": {
+        "sofa_3_seater": 95,
+        "loveseat_2_seater": 88,
+        "detachable_both_sides_addon": 30,
+        "extra_deep_addon": 30,
+        "range_low": 155,
+        "range_high": 325
+      }
+    }
+  },
+
+  "after_answers_received": {
+    "_note": "Internal: note changes in HouseCall Pro. You can click invoice, screenshot the service portion with amounts, and send through HCP if the customer requested.",
+    "confirmation": "Perfect. Your technician will walk the home before getting started and confirm/change as needed. Thank you!"
+  },
+
+  "booking_confirmation_messages": {
+    "straightforward": "Thank you for booking online with us. Our tech will send you a text message when he's en route to your home the day of service.",
+    "with_furniture": "Thank you for booking online with us! Just FYI—due to insurance restrictions, we are unable to move large pieces of furniture. Small items, however, can be placed on sliders if needed. Our tech will send you a text message when he's en route to your home the day of service.",
+    "high_rise_fee": "Thank you for booking online with us. Just a note—if your home is not on the ground floor, we do have a high-rise service fee of $30 to account for the additional time and setup. Our tech will send you a text message when he's en route to your home the day of service. Thank you for choosing Kwik Dry!"
+  },
+
+  "policy_and_faq_answers": {
+    "still_smell_pet_urine": "Pet urine can be a bit unpredictable — its acidity and makeup can vary based on your pet's diet, age, health, and how long the spot has been there. Because of that, some areas may need an extra treatment. We're more than happy to come back and retreat the spot to help resolve the issue. Just let us know what works best for you.",
+    "satisfaction_guarantee": "Hi! Thanks for asking about a satisfaction guarantee. While we don't have a formal one, your happiness is our priority. With 400+ five-star reviews, we stand behind our work and always strive to make things right. If something's off, we'll return to fix it or offer a refund when necessary—it's rare, but we're always here to help.",
+    "do_you_spot_treat": "Spot treating often makes the cleaned area noticeably brighter than the rest, which can highlight the surrounding dirt. To ensure a consistent and professional result, we only offer full cleanings.",
+    "discount_for_high_traffic_only": "It actually takes more time and care from our technicians to work around the furniture and personal belongings in the space than it does to quickly clean an empty room. For that reason, there is no discounted price for just the walkways or high traffic areas.",
+    "sharpie_removal": "We may be able to lighten the spot, but Sharpie is a permanent dye and often bonds deeply with the fabric. Complete removal usually isn't possible.",
+    "debris_still_in_vents": "Depending on the bends and angles of the ductwork, debris can get caught in the press-fit joints. When the system kicks back on, the airflow can loosen and blow out what was stuck. We can come back and hit the vents that still need attention.",
+    "seal_grout_in_shower": "Our color seal products aren't designed for use in showers. The only service we offer in shower areas is a thorough cleaning. For regrouting/sealing needs, we recommend contacting Mike Prediger with LTN Home Repair at (860) 234-2312 — he may be able to assist.",
+    "shower_tile_cost": "We price shower tile cleaning at $1.50/sqft. A standard shower is typically around $88-$110 for reference.",
+    "cancel_appointment_today": "We do have a 24-hour cancellation policy with a $50 fee. I can send an invoice for that amount, and after it's taken care of, we'll be happy to reschedule your appointment. Cancellations within that window don't give us enough time to rebook the slot, and our technicians lose out on pay, so the fee is paid directly to them.",
+    "air_duct_fogging_chemicals": "Our botanical disinfectant fogging solution uses Thymol as its active ingredient and has a light lemongrass and grapefruit fragrance. The non-abrasive, non-corrosive, non-flammable formula cleans and disinfects without bleach, chlorine, or phosphates, and is free from harsh chemicals, parabens, formaldehyde, and NPE's.",
+    "steam_clean_vs_dry_clean": "We are two completely different companies with two very different cleaning methods. They are a steam carpet cleaning company, while we are a dry carpet cleaning company. Steam cleaning uses gallons of water to clean carpets, leaving them wet for a much longer period of time, and uses a truck-mounted system, which means your front door must remain open throughout the process—letting cold air into your home. Dry carpet cleaning (Kwik Dry) uses an all-natural, hydrogenated citrus cleaner that breaks down the proteins in stains, allowing us to lift them as we agitate the carpet. Because no water is used, carpets are dry within about an hour. Our equipment is not truck-mounted and is brought directly into your home, so your door does not need to stay open. This allows for a faster dry time, less disruption to your home, and a more comfortable cleaning experience. Because we have no hidden fees, spot treating, deodorizing, and carpet protection are all included."
+  },
+
+  "tech_text_templates": {
+    "ahead_of_schedule": "Hi! I'm ahead of schedule today and could come by sooner. Would an earlier appointment work for you?",
+    "running_behind": "My current job is taking longer than expected. Will it be OK if I come later to your home? I will send you a text when I'm headed your direction."
+  },
+
+  "key_policies_quick_reference": {
+    "service_area": "Within ~45 minutes of Broken Arrow, OK.",
+    "booking_slots": "8 AM, 11 AM, 2 PM on most days.",
+    "furniture": "Cannot move large furniture due to insurance restrictions; small items can go on sliders.",
+    "cancellation": "24-hour cancellation policy, $50 fee paid directly to the technician.",
+    "full_cleanings_only": "No spot-treating and no high-traffic-only discount; full cleanings only.",
+    "satisfaction": "No formal guarantee, but will return to fix or refund when necessary.",
+    "included_in_carpet_price": "Spot treating, deodorizing, and carpet protection are all included; no hidden fees.",
+    "high_rise_fee": "$30 if the home is not on the ground floor."
+  }
+}
