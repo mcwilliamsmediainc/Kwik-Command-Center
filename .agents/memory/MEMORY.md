@@ -1,0 +1,1 @@
+- [Replit prod filesystem is ephemeral](ephemeral-fs-persistence.md) — never persist app data to local JSON files; they reset on every redeploy/restart. Use Postgres.

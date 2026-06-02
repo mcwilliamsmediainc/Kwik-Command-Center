@@ -1,13 +1,13 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import twilio from "twilio";
-import { promises as fs } from "node:fs";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
-import path from "node:path";
+import { db, messagesTable } from "@workspace/db";
+import { desc, eq, sql } from "drizzle-orm";
 
-/* ── File-backed message store ───────────────────────────────────
-   Messages are persisted to ./data/messages.json so they survive
-   server restarts and deployments. Reads are served from an
-   in-memory mirror for speed; writes go to both. */
+/* ── Postgres-backed message store ───────────────────────────────
+   Inbound WhatsApp messages and outbound replies are persisted to
+   the `messages` table so they survive server restarts and
+   deployments. There is no file-based or in-memory mirror — the
+   database is the single source of truth. */
 export interface WaMessage {
   id: string;
   from: string;
@@ -15,39 +15,6 @@ export interface WaMessage {
   body: string;
   timestamp: string;
   status: "new" | "read";
-}
-
-const DATA_DIR = path.join(process.cwd(), "data");
-const MESSAGES_FILE = path.join(DATA_DIR, "messages.json");
-
-function loadMessagesSync(): WaMessage[] {
-  try {
-    if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
-    if (!existsSync(MESSAGES_FILE)) return [];
-    const raw = readFileSync(MESSAGES_FILE, "utf8");
-    const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? (parsed as WaMessage[]) : [];
-  } catch (err) {
-    console.error("Failed to load messages.json — starting empty:", err);
-    return [];
-  }
-}
-
-const messages: WaMessage[] = loadMessagesSync();
-let lastInboundAt: string | null =
-  messages.find((m) => m.name !== "You")?.timestamp ?? null;
-
-/* Serialise writes so concurrent webhook bursts don't clobber the file. */
-let writeChain: Promise<void> = Promise.resolve();
-function persistMessages(): void {
-  writeChain = writeChain
-    .then(async () => {
-      await fs.mkdir(DATA_DIR, { recursive: true });
-      await fs.writeFile(MESSAGES_FILE, JSON.stringify(messages, null, 2), "utf8");
-    })
-    .catch((err) => {
-      console.error("Failed to write messages.json:", err);
-    });
 }
 
 const router: IRouter = Router();
@@ -77,16 +44,14 @@ router.get("/webhooks/whatsapp", (req: Request, res: Response) => {
 });
 
 /* ── POST /webhooks/whatsapp ─────────────────────────────────── */
-router.post("/webhooks/whatsapp", (req: Request, res: Response) => {
+router.post("/webhooks/whatsapp", async (req: Request, res: Response) => {
   logWebhookHit(req);
 
-  /* Acknowledge Twilio FIRST with a valid TwiML MessagingResponse,
-     BEFORE any async processing. If we ever throw downstream,
-     Twilio has already seen a 200 + valid XML and won't retry. */
-  res.set("Content-Type", "text/xml");
-  res.status(200).send(EMPTY_TWIML);
-
-  /* ── Process after the response is sent ── */
+  /* Durability contract: persist to Postgres BEFORE acking Twilio.
+     The DB is the source of truth, so if the write fails we must
+     return a non-2xx and let Twilio retry rather than ack a message
+     we never stored. onConflictDoNothing on the MessageSid makes
+     those retries idempotent (no duplicate rows). */
   try {
     const body = req.body as {
       From?: string;
@@ -97,80 +62,113 @@ router.post("/webhooks/whatsapp", (req: Request, res: Response) => {
     };
     const fromRaw = body.From ?? body.WaId ?? "";
     const from = fromRaw.replace(/^whatsapp:/, "");
-    const msg: WaMessage = {
-      id: body.MessageSid ?? `msg-${Date.now()}`,
-      from,
-      name: body.ProfileName ?? from,
-      body: body.Body ?? "",
-      timestamp: new Date().toISOString(),
-      status: "new",
-    };
+    const id = body.MessageSid ?? `msg-${Date.now()}`;
+    const name = body.ProfileName ?? from;
 
-    messages.unshift(msg);
-    lastInboundAt = msg.timestamp;
-    persistMessages();
-    req.log.info({ from, name: msg.name }, "WhatsApp message received");
+    await db
+      .insert(messagesTable)
+      .values({
+        id,
+        from,
+        name,
+        body: body.Body ?? "",
+        timestamp: new Date(),
+        status: "new",
+      })
+      .onConflictDoNothing({ target: messagesTable.id });
+
+    req.log.info({ from, name }, "WhatsApp message received");
+    res.set("Content-Type", "text/xml");
+    res.status(200).send(EMPTY_TWIML);
   } catch (err) {
-    req.log.error({ err }, "Failed to process WhatsApp webhook body");
+    req.log.error({ err }, "Failed to persist WhatsApp webhook message");
+    /* Non-2xx → Twilio retries; the message is not yet stored. */
+    res.status(500).send("Failed to store message");
   }
 });
 
 /* ── POST /dispatch/messages/clear (admin) ──────────────────────
    Wipes the persisted message store. Useful when test or stale
    threads are polluting the dispatch list in production. */
-router.post("/dispatch/messages/clear", (req: Request, res: Response) => {
-  const removed = messages.length;
-  messages.length = 0;
-  lastInboundAt = null;
-  persistMessages();
-  req.log.info({ removed }, "Dispatch message store cleared");
-  res.json({ ok: true, removed });
+function toWaMessage(row: typeof messagesTable.$inferSelect): WaMessage {
+  return {
+    id: row.id,
+    from: row.from,
+    name: row.name,
+    body: row.body,
+    timestamp: row.timestamp.toISOString(),
+    status: row.status,
+  };
+}
+
+router.post("/dispatch/messages/clear", async (req: Request, res: Response) => {
+  try {
+    const removed = await db.delete(messagesTable).returning({ id: messagesTable.id });
+    req.log.info({ removed: removed.length }, "Dispatch message store cleared");
+    res.json({ ok: true, removed: removed.length });
+  } catch (err) {
+    req.log.error({ err }, "Failed to clear dispatch message store");
+    res.status(500).json({ ok: false, error: "Failed to clear message store" });
+  }
 });
 
 /* ── GET /dispatch/status ───────────────────────────────────────
    Lightweight health endpoint for the Dispatch "Connected" dot.
    `isReceiving` is true if any inbound WhatsApp message has
    landed within the last 5 minutes. */
-router.get("/dispatch/status", (_req: Request, res: Response) => {
-  const FIVE_MIN_MS = 5 * 60 * 1000;
-  const isReceiving =
-    lastInboundAt !== null && Date.now() - new Date(lastInboundAt).getTime() < FIVE_MIN_MS;
-  res.json({
-    isReceiving,
-    lastInboundAt,
-    totalMessages: messages.length,
-  });
+router.get("/dispatch/status", async (req: Request, res: Response) => {
+  try {
+    const FIVE_MIN_MS = 5 * 60 * 1000;
+    const [row] = await db
+      .select({
+        total: sql<number>`count(*)::int`,
+        lastInbound: sql<Date | null>`max("timestamp") filter (where "name" <> 'You')`,
+      })
+      .from(messagesTable);
+    const lastInboundAt = row?.lastInbound ? new Date(row.lastInbound).toISOString() : null;
+    const isReceiving =
+      lastInboundAt !== null &&
+      Date.now() - new Date(lastInboundAt).getTime() < FIVE_MIN_MS;
+    res.json({
+      isReceiving,
+      lastInboundAt,
+      totalMessages: row?.total ?? 0,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to read dispatch status");
+    res.status(500).json({ isReceiving: false, lastInboundAt: null, totalMessages: 0 });
+  }
 });
 
 /* ── GET /dispatch/messages ──────────────────────────────────────
-   Reads from the SAME `messages` array that the webhook writes to.
-   That array is the in-memory mirror of ./data/messages.json — both
-   the webhook write and this poll read share it, so there is no
-   "two arrays" drift. */
-router.get("/dispatch/messages", (_req: Request, res: Response) => {
-  const sorted = [...messages].sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-  );
-  console.log("POLL: returning", messages.length, "messages");
-  res.json(sorted);
+   Reads from the `messages` table — the single source of truth that
+   the webhook and outbound send both write to. */
+router.get("/dispatch/messages", async (req: Request, res: Response) => {
+  try {
+    const rows = await db
+      .select()
+      .from(messagesTable)
+      .orderBy(desc(messagesTable.timestamp));
+    res.json(rows.map(toWaMessage));
+  } catch (err) {
+    req.log.error({ err }, "Failed to read dispatch messages");
+    res.status(500).json([]);
+  }
 });
 
 /* ── POST /dispatch/messages/:id/read ───────────────────────── */
-router.post("/dispatch/messages/:id/read", (req: Request, res: Response) => {
-  const msg = messages.find((m) => m.id === req.params["id"]);
-  if (msg) msg.status = "read";
-  res.json({ ok: true });
+router.post("/dispatch/messages/:id/read", async (req: Request, res: Response) => {
+  try {
+    const id = String(req.params["id"] ?? "");
+    await db.update(messagesTable).set({ status: "read" }).where(eq(messagesTable.id, id));
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error({ err }, "Failed to mark message read");
+    res.status(500).json({ ok: false });
+  }
 });
 
 /* ── POST /dispatch/send ─────────────────────────────────────── */
-function toWhatsApp(raw: string): string {
-  const trimmed = raw.trim();
-  if (trimmed.startsWith("whatsapp:")) return trimmed;
-  /* Ensure leading + so Twilio accepts E.164 */
-  const withPlus = trimmed.startsWith("+") ? trimmed : `+${trimmed.replace(/^[^\d]*/, "")}`;
-  return `whatsapp:${withPlus}`;
-}
-
 function twilioHelpFor(code: number | undefined): string {
   if (code === 63016) {
     return 'Recipient must join sandbox. Have them text "join [your-sandbox-word]" to +1 415 523 8886';
@@ -223,16 +221,18 @@ router.post("/dispatch/send", async (req: Request, res: Response) => {
       body: req.body.message || "Test message from Kwik Dry",
     });
 
-    /* Also store the outbound message locally so it appears in the thread */
-    messages.unshift({
-      id: message.sid,
-      from: toNumberPlain,
-      name: "You",
-      body: req.body.message || "Test message from Kwik Dry",
-      timestamp: new Date().toISOString(),
-      status: "read",
-    });
-    persistMessages();
+    /* Also store the outbound message so it appears in the thread */
+    await db
+      .insert(messagesTable)
+      .values({
+        id: message.sid,
+        from: toNumberPlain,
+        name: "You",
+        body: req.body.message || "Test message from Kwik Dry",
+        timestamp: new Date(),
+        status: "read",
+      })
+      .onConflictDoNothing({ target: messagesTable.id });
 
     console.log("SUCCESS - SID:", message.sid);
     res.json({ success: true, sid: message.sid });
