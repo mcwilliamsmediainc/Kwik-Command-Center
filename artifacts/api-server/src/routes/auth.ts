@@ -9,6 +9,12 @@ import {
 
 const router: IRouter = Router();
 
+/* GET /api/auth/verify — lightweight key check used by the admin UI gate.
+   Reaching this with a 200 means the presented key passed the auth middleware. */
+router.get("/auth/verify", (_req, res) => {
+  res.json({ ok: true });
+});
+
 /* The redirect URI must match exactly what is registered in the Intuit app
    settings AND be identical on both the authorize redirect and the token
    exchange. Defaults to the production callback; overridable for other hosts. */
