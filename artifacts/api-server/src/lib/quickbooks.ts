@@ -372,9 +372,9 @@ export interface BalanceSheetSummary {
 export function normalizeBalanceSheet(report: QboReport, asOf: string): BalanceSheetSummary {
   const rows = rowsOf(report);
   const assets = firstGroupTotal(rows, ["TotalAssets"]) ?? 0;
-  const liabilities = firstGroupTotal(rows, ["TotalLiabilities"]) ?? 0;
-  const equity = firstGroupTotal(rows, ["TotalEquity"]) ?? 0;
-  const cash = firstGroupTotal(rows, ["Bank", "TotalBank"]) ?? 0;
+  const liabilities = firstGroupTotal(rows, ["TotalLiabilities", "Liabilities"]) ?? 0;
+  const equity = firstGroupTotal(rows, ["TotalEquity", "Equity"]) ?? 0;
+  const cash = firstGroupTotal(rows, ["BankAccounts", "Bank", "TotalBank"]) ?? 0;
   return {
     assets: round(assets),
     liabilities: round(liabilities),
