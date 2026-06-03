@@ -47,10 +47,10 @@ changed, the refresh returns its access token to current callers but persists NO
 (no DB write, no cache/needsReauth mutation). Any new reconnect-related write path must
 respect this generation check.
 
-## Auth gap (known, out of scope)
-The entire API is currently unauthenticated, so `/api/auth/quickbooks` is too — anyone
-who can reach it could rebind the QBO connection. Adding auth is an app-wide decision,
-not part of the OAuth-routes task. Flag to the user before relying on this in the open.
+## Auth (now gated)
+`/api/auth/quickbooks` (initiation) is now protected by the shared-secret layer — see
+[api-auth-layer.md]. The browser reconnect link is a top-level navigation, so it
+authenticates via the HTTP Basic prompt (not `x-api-key`). The callback stays open.
 
 ## invalid_grant = dead connection
 A 400 `invalid_grant` from the token endpoint means the refresh token is expired/revoked
