@@ -1,5 +1,13 @@
 import { Router, type IRouter } from "express";
-import { getBankAccounts } from "../lib/quickbooks.js";
+import {
+  getBankAccounts,
+  getProfitAndLoss,
+  getBalanceSheet,
+  getCompanyName,
+  getQboStatus,
+  normalizeProfitAndLoss,
+  normalizeBalanceSheet,
+} from "../lib/quickbooks.js";
 
 const router: IRouter = Router();
 
@@ -14,6 +22,32 @@ interface BankBalancePayload {
   syncedAt: string;
 }
 
+function ymd(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+/** Map a named period to a [start, end] date range (UTC, YYYY-MM-DD). */
+function periodRange(period: string): { start: string; end: string } {
+  const now = new Date();
+  const y = now.getUTCFullYear();
+  const m = now.getUTCMonth();
+
+  if (period === "last_month") {
+    const start = new Date(Date.UTC(y, m - 1, 1));
+    const end = new Date(Date.UTC(y, m, 0)); // day 0 of this month = last day of prev
+    return { start: ymd(start), end: ymd(end) };
+  }
+  if (period === "last_quarter") {
+    const startMonth = (Math.floor(m / 3) - 1) * 3; // first month of previous quarter
+    const start = new Date(Date.UTC(y, startMonth, 1));
+    const end = new Date(Date.UTC(y, startMonth + 3, 0));
+    return { start: ymd(start), end: ymd(end) };
+  }
+  // ytd (default)
+  return { start: `${y}-01-01`, end: ymd(now) };
+}
+
+/* ── GET /api/quickbooks/bank-balance ──────────────────────────── */
 router.get("/quickbooks/bank-balance", async (req, res) => {
   try {
     if (cache && Date.now() < cache.expiresAt) {
@@ -39,6 +73,62 @@ router.get("/quickbooks/bank-balance", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "quickbooks /bank-balance failed");
     res.status(502).json({ error: String(err instanceof Error ? err.message : err) });
+  }
+});
+
+/* ── GET /api/quickbooks/pnl?period=ytd|last_month|last_quarter ── */
+router.get("/quickbooks/pnl", async (req, res) => {
+  try {
+    const period = String(req.query.period ?? "ytd");
+    const { start, end } = periodRange(period);
+    const report = await getProfitAndLoss(start, end);
+    res.json(normalizeProfitAndLoss(report, start, end));
+  } catch (err) {
+    req.log.error({ err }, "quickbooks /pnl failed");
+    res.status(502).json({
+      error: String(err instanceof Error ? err.message : err),
+      needsReauth: getQboStatus().needsReauth,
+    });
+  }
+});
+
+/* ── GET /api/quickbooks/balance-sheet ─────────────────────────── */
+router.get("/quickbooks/balance-sheet", async (req, res) => {
+  try {
+    const asOf = ymd(new Date());
+    const report = await getBalanceSheet(asOf);
+    res.json(normalizeBalanceSheet(report, asOf));
+  } catch (err) {
+    req.log.error({ err }, "quickbooks /balance-sheet failed");
+    res.status(502).json({
+      error: String(err instanceof Error ? err.message : err),
+      needsReauth: getQboStatus().needsReauth,
+    });
+  }
+});
+
+/* ── GET /api/quickbooks/health ────────────────────────────────── */
+router.get("/quickbooks/health", async (req, res) => {
+  try {
+    const companyName = await getCompanyName();
+    const status = getQboStatus();
+    res.json({
+      connected: !status.needsReauth,
+      realmId: status.realmId,
+      companyName,
+      lastRefresh: status.lastRefresh,
+      needsReauth: status.needsReauth,
+    });
+  } catch (err) {
+    req.log.warn({ err }, "quickbooks /health check failed");
+    const status = getQboStatus();
+    res.json({
+      connected: false,
+      realmId: status.realmId,
+      companyName: null,
+      lastRefresh: status.lastRefresh,
+      needsReauth: status.needsReauth,
+    });
   }
 });
 

@@ -1,0 +1,31 @@
+Build a QuickBooks Online service module for the Command Center.
+Config / endpoints (QBO is OAuth 2.0 Authorization Code flow, v3 API):
+
+Token endpoint: https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer
+API base (production): https://quickbooks.api.intuit.com
+All API calls use minorversion=75 and header Accept: application/json.
+Reports live at: GET /v3/company/{QBO_REALM_ID}/reports/{ReportName}?minorversion=75
+
+Token manager:
+
+Maintain an in-memory access token + expiry. Access tokens last 60 minutes — refresh when under 5 minutes remaining.
+To refresh: POST to the token endpoint with grant_type=refresh_token and the current refresh token, Content-Type: application/x-www-form-urlencoded, and HTTP Basic auth = base64(QBO_CLIENT_ID:QBO_CLIENT_SECRET).
+Critical: the refresh response may contain a NEW refresh_token. Persist it (to DB or a ./data/qbo-token.json file) and use the persisted value going forward — never assume the original QBO_REFRESH_TOKEN secret stays valid. Seed from the QBO_REFRESH_TOKEN secret only on first run.
+If a refresh returns 400 invalid_grant, the connection is dead — log it and expose a needsReauth: true flag so the UI can prompt a reconnect.
+
+Report helpers (each returns parsed JSON, cached 30 min per report+date-range):
+
+getProfitAndLoss(start, end) → reports/ProfitAndLoss?start_date=&end_date=
+getBalanceSheet(asOf) → reports/BalanceSheet?end_date=
+getCashFlow(start, end) → reports/CashFlow
+getArAging() → reports/AgedReceivables
+getApAging() → reports/AgedPayables
+
+Respect rate limits: 500 requests/min and max 10 concurrent per company — cache aggressively and never poll in a tight loop.
+Endpoints to expose:
+
+GET /api/quickbooks/pnl?period=ytd|last_month|last_quarter → normalized { revenue, cogs, grossProfit, expenses, netIncome, netMargin, byCategory[] }
+GET /api/quickbooks/balance-sheet → { assets, liabilities, equity, cash }
+GET /api/quickbooks/health → { connected, realmId, companyName, lastRefresh, needsReauth }
+
+Secrets already configured: QBO_CLIENT_ID, QBO_CLIENT_SECRET, QBO_REFRESH_TOKEN, QBO_REALM_ID, QBO_ENVIRONMENT.

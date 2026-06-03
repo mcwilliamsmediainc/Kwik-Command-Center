@@ -1,2 +1,3 @@
 - [Replit prod filesystem is ephemeral](ephemeral-fs-persistence.md) — never persist app data to local JSON files; they reset on every redeploy/restart. Use Postgres.
 - [Ryder AI prompt + pricing source of truth](ryder-prompt-architecture.md) — /api/chat is a thin proxy; pricing lives in the tenant profile JSON (+ ProfileContext FALLBACK), drafts ground via buildRyderDraftSystem.
+- [QuickBooks OAuth](quickbooks-oauth.md) — refresh tokens rotate (need single-flight); DB row shadows a freshly-rotated secret (clear oauth_tokens on reconnect); invalid_grant = human reauth, not a code fix.
