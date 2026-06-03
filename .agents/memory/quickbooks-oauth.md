@@ -21,8 +21,36 @@ Every successful refresh may return a NEW refresh_token; the old one dies.
 `loadRefreshToken()` reads the DB row first and only seeds from `QBO_REFRESH_TOKEN`
 when no row exists. So after the user rotates the secret, a stale DB row will still be
 used and keep failing.
-**How to apply:** When the secret is rotated/reconnected, delete the row:
-`delete from oauth_tokens where provider='quickbooks';` so the new secret seeds.
+**How to apply:** Prefer the in-app OAuth reconnect (below), which upserts the row.
+Manual fallback when there is no UI access: `delete from oauth_tokens where provider='quickbooks';`
+so the env secret re-seeds.
+
+## In-app OAuth Authorization Code flow (connect / reconnect)
+Routes `GET /api/auth/quickbooks` (→ Intuit authorize) and `/api/auth/quickbooks/callback`
+let an admin re-authorize without touching secrets. `realmId` is now a column on
+`oauth_tokens` (no longer env-only); `getRealmId()` reads DB first, falls back to
+`QBO_REALM_ID`, and caches in memory for the sync `getQboStatus()`.
+- CSRF state rides a short-lived HttpOnly+Secure+SameSite=Lax cookie scoped to
+  `/api/auth/quickbooks` (this app has NO express-session).
+- redirect_uri must be byte-identical on authorize + token exchange AND registered in
+  the Intuit app; defaults to the prod callback, overridable via `QBO_REDIRECT_URI`.
+- The full handshake only completes in production (redirect_uri is the prod domain);
+  locally you can only verify the 302, the state cookie, and callback state rejection.
+
+## Reconnect vs in-flight refresh: generation guard
+**Why:** A reconnect (`persistQboConnection`) and an already in-flight single-flight
+refresh of the OLD token chain race — without coordination the old refresh can finish
+later and overwrite the new refresh_token/realm/cache or resurrect `needsReauth`.
+**How to apply:** A module-level `connectionGeneration` counter is bumped at the start
+of `persistQboConnection`. `refreshAccessToken` snapshots it; on completion, if it
+changed, the refresh returns its access token to current callers but persists NOTHING
+(no DB write, no cache/needsReauth mutation). Any new reconnect-related write path must
+respect this generation check.
+
+## Auth gap (known, out of scope)
+The entire API is currently unauthenticated, so `/api/auth/quickbooks` is too — anyone
+who can reach it could rebind the QBO connection. Adding auth is an app-wide decision,
+not part of the OAuth-routes task. Flag to the user before relying on this in the open.
 
 ## invalid_grant = dead connection
 A 400 `invalid_grant` from the token endpoint means the refresh token is expired/revoked

@@ -54,6 +54,51 @@ export function SettingsPage() {
 
   const [saving, setSaving] = useState<string | null>(null);
 
+  /* Live QuickBooks connection status (from /api/quickbooks/health), used to
+     surface a Reconnect link when the OAuth token needs re-authorization. */
+  const [qbo, setQbo] = useState<{
+    connected: boolean;
+    companyName: string | null;
+    needsReauth: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/quickbooks/health")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((h) => {
+        if (cancelled || !h) return;
+        setQbo({
+          connected: Boolean(h.connected),
+          companyName: h.companyName ?? null,
+          needsReauth: Boolean(h.needsReauth),
+        });
+      })
+      .catch(() => { /* leave as null — fall back to profile flag */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  /* Surface the result of the OAuth callback redirect (?qbo=connected|error). */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("qbo");
+    if (!status) return;
+    if (status === "connected") {
+      const company = params.get("company");
+      toast({
+        title: "QuickBooks connected",
+        description: company ? `Connected: ${company}` : "QuickBooks connected.",
+      });
+    } else if (status === "error") {
+      toast({
+        title: "QuickBooks connection failed",
+        description: params.get("message") || "Please try reconnecting.",
+        variant: "destructive",
+      });
+    }
+    window.history.replaceState({}, "", window.location.pathname);
+  }, [toast]);
+
   async function save(label: string, patch: DeepPartial<BusinessProfile>) {
     setSaving(label);
     try {
@@ -393,12 +438,29 @@ export function SettingsPage() {
           <Card title={(
             <div className="flex items-center justify-between w-full">
               <span>QuickBooks</span>
-              <StatusPill connected={draft.integrations.quickbooks.connected} />
+              <StatusPill connected={qbo?.connected ?? draft.integrations.quickbooks.connected} />
             </div>
           )}>
-            <p className="text-xs" style={{ color: "#6b7a90" }}>
-              QuickBooks connection is managed via OAuth — status is read-only here.
-            </p>
+            {qbo?.connected && qbo.companyName ? (
+              <p className="text-xs" style={{ color: "#6b7a90" }}>
+                Connected: <span className="font-semibold" style={{ color: "#1f2d3d" }}>{qbo.companyName}</span>
+              </p>
+            ) : (
+              <p className="text-xs" style={{ color: "#6b7a90" }}>
+                QuickBooks connection is managed via OAuth.
+              </p>
+            )}
+
+            {(qbo?.needsReauth || qbo?.connected === false) && (
+              <a
+                href="/api/auth/quickbooks"
+                className="inline-flex items-center gap-1.5 mt-3 text-xs font-semibold px-3 py-1.5 rounded-md text-white"
+                style={{ backgroundColor: "var(--brand-primary)" }}
+              >
+                <RefreshCw className="w-3 h-3" /> Reconnect QuickBooks
+              </a>
+            )}
+
             <p className="text-xs mt-2 flex items-center gap-1.5" style={{ color: "#6b7a90" }}>
               <RefreshCw className="w-3 h-3" /> Last sync: {fmtSync(draft.integrations.quickbooks.last_sync)}
             </p>

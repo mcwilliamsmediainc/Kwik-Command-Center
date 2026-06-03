@@ -13,6 +13,8 @@ import { eq } from "drizzle-orm";
 
 const PROVIDER = "quickbooks";
 const TOKEN_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
+const AUTHORIZE_URL = "https://appcenter.intuit.com/connect/oauth2";
+const QBO_SCOPE = "com.intuit.quickbooks.accounting";
 const MINOR_VERSION = "75";
 const ACCESS_TOKEN_SKEW_MS = 5 * 60 * 1000; // refresh when <5 min remain
 const REPORT_TTL_MS = 30 * 60 * 1000; // cache reports 30 min
@@ -43,7 +45,11 @@ export interface QboStatus {
 }
 
 export function getQboStatus(): QboStatus {
-  return { needsReauth, lastRefresh, realmId: process.env.QBO_REALM_ID ?? null };
+  return {
+    needsReauth,
+    lastRefresh,
+    realmId: cachedRealmId ?? process.env.QBO_REALM_ID ?? null,
+  };
 }
 
 /* ── Concurrency limiter (max 10 in-flight company API calls) ──── */
@@ -63,16 +69,35 @@ async function withLimit<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-/* ── Refresh-token persistence ─────────────────────────────────── */
+/* ── Refresh-token + realmId persistence ───────────────────────── */
+// Realm (company) id is resolved from the DB connection first, falling back
+// to the env secret. Cached in memory so the sync getQboStatus() can report it.
+let cachedRealmId: string | null = process.env.QBO_REALM_ID ?? null;
+
 async function loadRefreshToken(): Promise<string> {
   const rows = await db
     .select()
     .from(oauthTokensTable)
     .where(eq(oauthTokensTable.provider, PROVIDER))
     .limit(1);
-  if (rows[0]?.refreshToken) return rows[0].refreshToken;
+  const row = rows[0];
+  if (row?.realmId) cachedRealmId = row.realmId;
+  if (row?.refreshToken) return row.refreshToken;
   // Seed from the env secret on first run only.
   return requireEnv("QBO_REFRESH_TOKEN");
+}
+
+async function getRealmId(): Promise<string> {
+  if (cachedRealmId) return cachedRealmId;
+  const rows = await db
+    .select()
+    .from(oauthTokensTable)
+    .where(eq(oauthTokensTable.provider, PROVIDER))
+    .limit(1);
+  const realmId = rows[0]?.realmId ?? process.env.QBO_REALM_ID ?? null;
+  if (!realmId) throw new Error("QBO_REALM_ID is not configured");
+  cachedRealmId = realmId;
+  return realmId;
 }
 
 async function saveRefreshToken(refreshToken: string): Promise<void> {
@@ -91,6 +116,10 @@ let accessTokenCache: { token: string; expiresAt: number } | null = null;
 // same token would make all-but-one fail with invalid_grant (false needsReauth).
 // Funnel every concurrent caller through one in-flight refresh.
 let refreshInFlight: Promise<string> | null = null;
+// Bumped every time a reconnect persists a new connection. A refresh that was
+// already in flight when a reconnect lands is "stale" and must not write its
+// (old-chain) results over the freshly authorized token/realm state.
+let connectionGeneration = 0;
 
 function getAccessToken(): Promise<string> {
   if (accessTokenCache && Date.now() < accessTokenCache.expiresAt) {
@@ -108,6 +137,10 @@ async function refreshAccessToken(): Promise<string> {
   if (accessTokenCache && Date.now() < accessTokenCache.expiresAt) {
     return accessTokenCache.token;
   }
+
+  // Snapshot the connection generation: if a reconnect lands while this refresh
+  // is in flight, our results are stale and must not overwrite the new state.
+  const gen = connectionGeneration;
 
   const clientId = requireEnv("QBO_CLIENT_ID");
   const clientSecret = requireEnv("QBO_CLIENT_SECRET");
@@ -130,9 +163,10 @@ async function refreshAccessToken(): Promise<string> {
   if (!res.ok) {
     const text = await res.text();
     // A 400 invalid_grant means the refresh token is dead — the connection
-    // must be re-authorized by a human. Flag it for the UI.
+    // must be re-authorized by a human. Flag it for the UI, UNLESS a reconnect
+    // already superseded this stale refresh (don't resurrect needsReauth).
     if (res.status === 400 && /invalid_grant/i.test(text)) {
-      needsReauth = true;
+      if (gen === connectionGeneration) needsReauth = true;
       throw new Error(
         "QuickBooks refresh token is invalid (invalid_grant) — reconnect required.",
       );
@@ -145,6 +179,13 @@ async function refreshAccessToken(): Promise<string> {
     refresh_token?: string;
     expires_in: number;
   };
+
+  // A reconnect landed while we were refreshing the old chain: hand the token
+  // back to in-flight callers (valid for the request they already started) but
+  // do NOT persist it or mutate shared cache/realm/needsReauth state.
+  if (gen !== connectionGeneration) {
+    return data.access_token;
+  }
 
   // Persist the (possibly rotated) refresh token for next time.
   if (data.refresh_token) {
@@ -162,7 +203,7 @@ async function refreshAccessToken(): Promise<string> {
 
 /* ── Query helper (SQL-like company queries) ───────────────────── */
 async function query<T>(statement: string): Promise<T> {
-  const realmId = requireEnv("QBO_REALM_ID");
+  const realmId = await getRealmId();
   return withLimit(async () => {
     const accessToken = await getAccessToken();
     const url = new URL(`${apiBase()}/v3/company/${realmId}/query`);
@@ -215,7 +256,7 @@ async function fetchReport(
   const cached = reportCache.get(key);
   if (cached && Date.now() < cached.expiresAt) return cached.data;
 
-  const realmId = requireEnv("QBO_REALM_ID");
+  const realmId = await getRealmId();
   const data = await withLimit(async () => {
     const accessToken = await getAccessToken();
     const url = new URL(`${apiBase()}/v3/company/${realmId}/reports/${name}`);
@@ -417,4 +458,99 @@ export async function getBankAccounts(): Promise<QboAccount[]> {
     "select * from Account where AccountType = 'Bank'",
   );
   return data.QueryResponse?.Account ?? [];
+}
+
+/* ── OAuth Authorization Code flow (connect / reconnect) ───────── */
+/** Build the Intuit authorize URL the browser is redirected to. */
+export function buildAuthorizeUrl(state: string, redirectUri: string): string {
+  const params = new URLSearchParams({
+    client_id: requireEnv("QBO_CLIENT_ID"),
+    scope: QBO_SCOPE,
+    redirect_uri: redirectUri,
+    response_type: "code",
+    state,
+  });
+  return `${AUTHORIZE_URL}?${params.toString()}`;
+}
+
+export interface QboTokenExchange {
+  refreshToken: string;
+  accessToken: string;
+  expiresIn: number;
+}
+
+/** Exchange an authorization code for tokens (same redirect_uri as authorize). */
+export async function exchangeAuthCode(
+  code: string,
+  redirectUri: string,
+): Promise<QboTokenExchange> {
+  const clientId = requireEnv("QBO_CLIENT_ID");
+  const clientSecret = requireEnv("QBO_CLIENT_SECRET");
+  const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+
+  const res = await fetch(TOKEN_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${basic}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
+    },
+    body: new URLSearchParams({
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: redirectUri,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`QuickBooks code exchange ${res.status}: ${text.slice(0, 200)}`);
+  }
+
+  const data = (await res.json()) as {
+    access_token: string;
+    refresh_token: string;
+    expires_in: number;
+  };
+  return {
+    refreshToken: data.refresh_token,
+    accessToken: data.access_token,
+    expiresIn: data.expires_in,
+  };
+}
+
+/** Persist a freshly authorized connection (refresh token + realm) and reset
+ *  the in-memory caches so the next call uses the new credentials. */
+export async function persistQboConnection(args: {
+  refreshToken: string;
+  realmId: string;
+  accessToken?: string;
+  expiresIn?: number;
+}): Promise<void> {
+  // Invalidate any in-flight refresh of the OLD token chain before we touch
+  // shared state, so its completion can't overwrite this fresh connection.
+  connectionGeneration += 1;
+
+  await db
+    .insert(oauthTokensTable)
+    .values({ provider: PROVIDER, refreshToken: args.refreshToken, realmId: args.realmId })
+    .onConflictDoUpdate({
+      target: oauthTokensTable.provider,
+      set: { refreshToken: args.refreshToken, realmId: args.realmId },
+    });
+
+  cachedRealmId = args.realmId;
+  needsReauth = false;
+  companyCache = null; // re-fetch the (possibly new) company name on next /health
+  reportCache.clear();
+
+  if (args.accessToken && args.expiresIn) {
+    lastRefresh = new Date().toISOString();
+    accessTokenCache = {
+      token: args.accessToken,
+      expiresAt: Date.now() + Math.max(0, args.expiresIn * 1000 - ACCESS_TOKEN_SKEW_MS),
+    };
+  } else {
+    accessTokenCache = null;
+  }
 }

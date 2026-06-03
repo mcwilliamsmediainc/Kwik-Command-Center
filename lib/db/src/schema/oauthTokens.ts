@@ -5,6 +5,7 @@ import { z } from "zod/v4";
 export const oauthTokensTable = pgTable("oauth_tokens", {
   provider: text("provider").primaryKey(),
   refreshToken: text("refresh_token").notNull(),
+  realmId: text("realm_id"),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()
