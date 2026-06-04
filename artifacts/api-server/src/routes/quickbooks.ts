@@ -92,6 +92,56 @@ router.get("/quickbooks/pnl", async (req, res) => {
   }
 });
 
+/* ── GET /api/quickbooks/marketing-spend ─────────────────────────
+   Month-to-date marketing/advertising spend, summed from P&L expense
+   accounts whose names look marketing-related. */
+const MARKETING_RE = /market|advertis|\bads?\b|promo|seo\b|google ads|facebook|meta ads|sponsor|billboard|mailer|flyer|lead gen/i;
+
+interface MarketingSpendPayload {
+  total: number;
+  categories: { name: string; amount: number }[];
+  period: { start: string; end: string };
+  syncedAt: string;
+}
+let marketingCache: CacheEntry<MarketingSpendPayload> | null = null;
+
+router.get("/quickbooks/marketing-spend", async (req, res) => {
+  try {
+    if (marketingCache && Date.now() < marketingCache.expiresAt) {
+      res.json(marketingCache.data);
+      return;
+    }
+
+    const now = new Date();
+    const start = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
+    const end = ymd(now);
+
+    const report = await getProfitAndLoss(start, end);
+    const pnl = normalizeProfitAndLoss(report, start, end);
+
+    const categories = pnl.byCategory
+      .filter((c) => MARKETING_RE.test(c.name) && c.amount !== 0)
+      .map((c) => ({ name: c.name, amount: c.amount }))
+      .sort((a, b) => b.amount - a.amount);
+
+    const payload: MarketingSpendPayload = {
+      total: Math.round(categories.reduce((s, c) => s + c.amount, 0) * 100) / 100,
+      categories,
+      period: { start, end },
+      syncedAt: new Date().toISOString(),
+    };
+
+    marketingCache = { data: payload, expiresAt: Date.now() + TTL_MS };
+    res.json(payload);
+  } catch (err) {
+    req.log.error({ err }, "quickbooks /marketing-spend failed");
+    res.status(502).json({
+      error: String(err instanceof Error ? err.message : err),
+      needsReauth: getQboStatus().needsReauth,
+    });
+  }
+});
+
 /* ── GET /api/quickbooks/balance-sheet ─────────────────────────── */
 router.get("/quickbooks/balance-sheet", async (req, res) => {
   try {

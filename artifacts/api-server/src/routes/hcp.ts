@@ -390,6 +390,9 @@ router.get("/hcp/financials", async (req, res) => {
     const monthStart  = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const monthEnd    = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
     const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    /* Invoices are fetched over a 3-month window (current month + 2 prior)
+       so outstanding/unpaid totals look further back than just this month. */
+    const invWindowStart = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString();
 
     const jobParams = (page: string) => ({
       page, page_size: "100",
@@ -398,21 +401,25 @@ router.get("/hcp/financials", async (req, res) => {
     });
     const invParams = (page: string) => ({
       page, page_size: "100",
-      created_start: monthStart,
+      created_start: invWindowStart,
       created_end: monthEnd,
     });
 
-    const [j1, j2, j3, inv1, inv2] = await Promise.all([
+    const [j1, j2, j3, inv1, inv2, inv3, inv4] = await Promise.all([
       hcpGet("/jobs",     jobParams("1")) as Promise<HcpJobPage>,
       hcpGet("/jobs",     jobParams("2")) as Promise<HcpJobPage>,
       hcpGet("/jobs",     jobParams("3")) as Promise<HcpJobPage>,
       hcpGet("/invoices", invParams("1")) as Promise<HcpInvoicePage>,
       hcpGet("/invoices", invParams("2")) as Promise<HcpInvoicePage>,
+      hcpGet("/invoices", invParams("3")) as Promise<HcpInvoicePage>,
+      hcpGet("/invoices", invParams("4")) as Promise<HcpInvoicePage>,
     ]);
 
-    const allJobs     = [...j1.jobs, ...j2.jobs, ...j3.jobs];
-    const allInvoices = [...(inv1.invoices ?? []), ...(inv2.invoices ?? [])]
-      .filter(i => i.invoice_date?.startsWith(monthPrefix));
+    const allJobs = [...j1.jobs, ...j2.jobs, ...j3.jobs];
+    /* 3-month window — used for outstanding invoices */
+    const windowInvoices = [...(inv1.invoices ?? []), ...(inv2.invoices ?? []), ...(inv3.invoices ?? []), ...(inv4.invoices ?? [])];
+    /* Current month only — keeps paid totals scoped to MTD */
+    const allInvoices = windowInvoices.filter(i => i.invoice_date?.startsWith(monthPrefix));
 
     /* ── Revenue by service category ── */
     function categorize(desc: string): string {
@@ -454,7 +461,9 @@ router.get("/hcp/financials", async (req, res) => {
       jobCustomerMap.set(job.id, name);
     }
 
-    /* ── Invoice totals (already filtered to current month) ── */
+    /* ── Invoice totals ──
+       Paid totals use current-month invoices (MTD); outstanding uses the
+       full 3-month window so older unpaid invoices stay visible. */
     let paidTotal = 0, outstandingTotal = 0, paidCount = 0;
     const outstandingInvoices: { id: string; invoiceNumber: string; customerName: string; amount: number; invoiceDate: string }[] = [];
 
@@ -463,6 +472,8 @@ router.get("/hcp/financials", async (req, res) => {
         paidTotal += (inv.amount ?? 0) / 100;
         paidCount++;
       }
+    }
+    for (const inv of windowInvoices) {
       if (inv.status === "open" || inv.status === "outstanding") {
         const amt = (inv.due_amount ?? inv.amount ?? 0) / 100;
         outstandingTotal += amt;

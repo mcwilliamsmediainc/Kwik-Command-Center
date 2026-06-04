@@ -22,6 +22,11 @@ interface BankBalanceData {
 interface ReviewsData { rating: number; totalReviews: number; reviews: { author: string; rating: number; text: string; when: string }[] }
 interface JobsData { jobs: { status: string }[]; total_items: number }
 interface StatsData { ryderSessions: number; date: string }
+interface MarketingSpendData {
+  total: number; categories: { name: string; amount: number }[];
+  period: { start: string; end: string }; syncedAt: string;
+}
+interface InboxMessage { id: string; from: string; name: string; status: "new" | "read" }
 
 /* ─── Recent Jobs — static reference rows ────────────────────── */
 const RECENT_JOBS = [
@@ -41,19 +46,35 @@ export function Dashboard() {
   const [openJobs,  setOpenJobs]  = useState<number | null>(null);
   const [ryder,     setRyder]     = useState<StatsData | null>(null);
   const [bank,      setBank]      = useState<BankBalanceData | null>(null);
+  const [marketing, setMarketing] = useState<MarketingSpendData | null>(null);
+  const [unanswered, setUnanswered] = useState<number | null>(null);
   const [loading,   setLoading]   = useState(true);
 
   const load = useCallback(async () => {
-    const [finRes, revRes, jobsRes, statsRes, bankRes] = await Promise.allSettled([
+    const [finRes, revRes, jobsRes, statsRes, bankRes, mktRes, inboxRes] = await Promise.allSettled([
       fetch("/api/hcp/financials").then(r => r.json()),
       fetch("/api/scout/reviews").then(r => r.json()),
       fetch("/api/hcp/jobs?date=today&page_size=200").then(r => r.json()),
       fetch("/api/stats/today").then(r => r.json()),
       fetch("/api/quickbooks/bank-balance").then(r => r.json()),
+      fetch("/api/quickbooks/marketing-spend").then(r => r.json()),
+      fetch("/api/dispatch/messages").then(r => r.json()),
     ]);
     if (finRes.status === "fulfilled" && !finRes.value.error)   setFin(finRes.value as FinancialsSummary);
     if (revRes.status === "fulfilled" && !revRes.value.error)   setReviews(revRes.value as ReviewsData);
     if (bankRes.status === "fulfilled" && !bankRes.value.error) setBank(bankRes.value as BankBalanceData);
+    if (mktRes.status === "fulfilled" && !mktRes.value.error)   setMarketing(mktRes.value as MarketingSpendData);
+    if (inboxRes.status === "fulfilled" && Array.isArray(inboxRes.value)) {
+      /* Count threads (grouped by sender) whose latest customer message
+         is still unread — mirrors the Inbox "needs response" badge. */
+      const msgs = inboxRes.value as InboxMessage[];
+      const threads = new Map<string, boolean>();
+      for (const m of msgs) {
+        const isNewCustomerMsg = m.status === "new" && m.name !== "You";
+        threads.set(m.from, (threads.get(m.from) ?? false) || isNewCustomerMsg);
+      }
+      setUnanswered(Array.from(threads.values()).filter(Boolean).length);
+    }
     if (jobsRes.status === "fulfilled" && !jobsRes.value.error) {
       const j = jobsRes.value as JobsData;
       const open = (j.jobs ?? []).filter((job: { status: string }) =>
@@ -123,18 +144,21 @@ export function Dashboard() {
           subtext={fin ? `${fin.jobCount} fetched of ${fin.totalJobItems} total` : ""}
         />
         <KpiCard
-          title="Google Reviews"
-          value={loading ? "—" : reviews ? `${reviews.totalReviews} · ${reviews.rating}★` : "unavailable"}
-          accentColor="#3db54a" topBorderColor="#3db54a"
-          trend={reviews ? "Google Places · live" : "checking…"}
-          trendUp={true}
+          title="Marketing Spend MTD"
+          value={loading ? "—" : marketing ? fmt$(marketing.total) : "unavailable"}
+          accentColor="#7c3aed" topBorderColor="#7c3aed"
+          trend={marketing ? "QuickBooks · live" : "checking…"}
+          trendUp={false}
+          subtext={marketing?.categories?.length ? marketing.categories.map(c => c.name).slice(0, 2).join(" · ") : ""}
         />
         <KpiCard
-          title="Ryder Sessions"
-          value={loading ? "—" : `${ryder?.ryderSessions ?? 0} today`}
-          accentColor="#7c3aed" topBorderColor="#7c3aed"
-          trend="increments per AI chat"
-          trendUp={true}
+          title="Unanswered Messages"
+          value={loading ? "—" : unanswered === null ? "unavailable" : unanswered === 0 ? "All Clear" : `${unanswered} waiting`}
+          accentColor={unanswered ? "#dc2626" : "#3db54a"}
+          topBorderColor={unanswered ? "#dc2626" : "#3db54a"}
+          trend={unanswered ? "needs a response" : "no new messages without reply"}
+          trendUp={!unanswered}
+          subtext="Unified Inbox"
         />
         <KpiCard
           title="Open Jobs Today"
@@ -150,7 +174,7 @@ export function Dashboard() {
           accentColor="#d97706" topBorderColor="#d97706"
           trend={fin ? `${fmt$(fin.outstandingTotal)} outstanding` : "loading…"}
           trendUp={false}
-          subtext={fin ? "HouseCall Pro" : ""}
+          subtext={fin ? "HouseCall Pro · last 3 months" : ""}
         />
         <KpiCard
           title="Bank Balance"
