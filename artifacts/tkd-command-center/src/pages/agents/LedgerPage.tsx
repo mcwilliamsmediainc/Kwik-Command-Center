@@ -54,18 +54,19 @@ const QB_EXPENSES_FALLBACK = {
   ] as ExpenseRow[],
 };
 
-/* QBO P&L nests expense leaves under an "Expenses"/"COGS" section. We surface
-   those as line items but EXCLUDE contractor/payroll-type accounts: tech pay is
-   counted once from HouseCall Pro job counts and must not be double-counted if
-   the books also record it as contract labor. */
-const QBO_EXPENSE_SECTION_RE = /expense|cogs|cost of goods/i;
-const QBO_PAYROLL_RE = /payroll|contract labor|subcontract|wages|tech(nician)? pay/i;
+/* QBO P&L leaves carry a `section` label; expense leaves live outside the
+   income / gross-profit / net-income sections. Used for a best-effort category
+   breakdown only — the AUTHORITATIVE totals are qbo.expenses / qbo.netIncome
+   from the normalizer, which roll up parent-account amounts that may not appear
+   as individual leaves (so the rows below can under-sum the real total). */
+const QBO_INCOME_SECTION_RE = /income|revenue|gross\s*profit|net\s*(operating\s*)?income/i;
 
-/** Real QBO expense line items, payroll excluded, largest first. */
+/** Best-effort QBO expense line items, largest first. May not sum to
+ *  qbo.expenses — always show qbo.expenses as the real total. */
 function qboExpenseRows(qbo: QboPnl | null): ExpenseRow[] {
   if (!qbo) return [];
   return qbo.byCategory
-    .filter(c => QBO_EXPENSE_SECTION_RE.test(c.section) && !QBO_PAYROLL_RE.test(c.name) && c.amount !== 0)
+    .filter(c => !QBO_INCOME_SECTION_RE.test(c.section) && c.amount !== 0)
     .map(c => ({ label: c.name, value: Math.round(c.amount) }))
     .sort((a, b) => b.value - a.value);
 }
@@ -75,25 +76,56 @@ function buildFinnPrompt(data: FinancialsData, qbo: QboPnl | null, p: BusinessPr
   const techLines = data.techs.map(t => `- ${t.name}: ${t.jobs} jobs · $${t.pay} due`).join("\n");
   const cityState = p.address.split(",").slice(-2).join(",").trim() || p.address;
 
-  const expRows   = qbo ? qboExpenseRows(qbo) : QB_EXPENSES_FALLBACK.rows;
-  const expTotal  = expRows.reduce((s, r) => s + r.value, 0); // payroll-excluded
+  if (qbo) {
+    /* QuickBooks connected → it is the source of truth for expenses & profit.
+       qbo.expenses already includes contractor/tech pay, so the HCP payroll
+       estimate is operational color only and is NOT added to the total. */
+    const expenseLines = qboExpenseRows(qbo).slice(0, 8)
+      .map(r => `  - ${r.label}: $${r.value.toLocaleString()}`).join("\n");
+
+    return `You are ${p.agents.financial}, the AI financial advisor for ${p.business_name} — a ${p.industry.toLowerCase()} company at ${cityState}. You have real-time access to QuickBooks Online (accounting) and HouseCall Pro (operations).
+
+QUICKBOOKS ONLINE — LIVE P&L, SOURCE OF TRUTH (${qbo.period.start} to ${qbo.period.end}):
+- Revenue: $${Math.round(qbo.revenue).toLocaleString()}
+- Total expenses: $${Math.round(qbo.expenses).toLocaleString()} (includes contractor/tech pay)
+- Net income: $${Math.round(qbo.netIncome).toLocaleString()} (${qbo.netMargin}% margin)
+Largest expense categories (from QuickBooks — illustrative; may not sum to the total above):
+${expenseLines}
+
+Treat the QuickBooks figures as authoritative for revenue, expenses, profit, and margin. Use the HouseCall Pro data below only for job-level color (service mix, job counts, outstanding invoices) — do NOT add it to the QuickBooks expense total.
+
+OPERATIONS — HOUSECALL PRO (${data.month}):
+- Revenue booked from ${data.jobCount} of ${data.totalJobItems} jobs: $${data.totalRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+  Revenue by service:
+${catLines}
+- Paid invoices: $${data.paidTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })} (${data.paidCount}); Outstanding: $${data.outstandingTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })} (${(data.outstandingInvoices ?? []).length} unpaid)
+- Avg job value: $${data.avgJobValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+- Tech payroll, operational estimate at $${p.pay_rate_per_job}/job: $${data.payrollTotal.toLocaleString()} across:
+${techLines}
+  (Operational estimate only; the booked contractor expense in QuickBooks above is authoritative and may differ.)
+
+INDUSTRY BENCHMARKS (residential cleaning):
+- Labor/contractor: 18–25% of revenue
+- Marketing: 5–10% of revenue
+- Supplies: 3–8% of revenue
+- Net margin: 35–50%
+
+YOUR STYLE:
+- Give specific, actionable advice using the QuickBooks numbers as the source of truth
+- Be concise and direct — no fluff
+- Flag anything unusual or worth watching (e.g. contractor cost vs the 18–25% benchmark)
+- Always recommend consulting a CPA for tax and legal matters
+- Never make up data — only use what is provided above`;
+  }
+
+  /* QuickBooks not connected → clearly-labeled estimate fallback. */
+  const expRows   = QB_EXPENSES_FALLBACK.rows;
+  const expTotal  = QB_EXPENSES_FALLBACK.total;
   const netProfit = data.totalRevenue - expTotal - data.payrollTotal;
   const margin    = data.totalRevenue > 0 ? Math.round((netProfit / data.totalRevenue) * 100) : 0;
   const expenseLines = expRows.map(r => `  - ${r.label}: $${r.value.toLocaleString()}`).join("\n");
 
-  const qboBlock = qbo
-    ? `QUICKBOOKS ONLINE — LIVE, BOOKS OF RECORD (${qbo.period.start} to ${qbo.period.end}):
-- Revenue (QuickBooks): $${Math.round(qbo.revenue).toLocaleString()}
-- Total operating expenses (QuickBooks): $${Math.round(qbo.expenses).toLocaleString()}
-- Net income (QuickBooks): $${Math.round(qbo.netIncome).toLocaleString()} (${qbo.netMargin}% margin)
-QuickBooks is the accounting source of truth for expenses and profitability. It reflects only invoiced/booked activity, so it can lag the HouseCall Pro operational figures above — reconcile, don't double-count.`
-    : `QUICKBOOKS: Not connected — the expense figures below are ESTIMATES, not live data. Recommend connecting QuickBooks in Settings for exact numbers.`;
-
-  const expensesHeader = qbo
-    ? `EXPENSES (QuickBooks — live; contractor pay listed separately to avoid double-counting):`
-    : `EXPENSES (estimated — QuickBooks not connected):`;
-
-  return `You are ${p.agents.financial}, the AI financial advisor for ${p.business_name} — a ${p.industry.toLowerCase()} company at ${cityState}. You have real-time access to HouseCall Pro (operations) and QuickBooks Online (accounting).
+  return `You are ${p.agents.financial}, the AI financial advisor for ${p.business_name} — a ${p.industry.toLowerCase()} company at ${cityState}. You have real-time access to HouseCall Pro (operations). QuickBooks is NOT connected, so expense figures are ESTIMATES.
 
 CURRENT FINANCIALS (${data.month}) — LIVE FROM HOUSECALL PRO:
 - Total Revenue (from ${data.jobCount} of ${data.totalJobItems} jobs): $${data.totalRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
@@ -103,14 +135,12 @@ ${catLines}
 - Outstanding Balance: $${data.outstandingTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })} (${(data.outstandingInvoices ?? []).length} unpaid invoices)
 - Avg Job Value: $${data.avgJobValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
 
-${qboBlock}
-
-${expensesHeader}
+EXPENSES (ESTIMATED — QuickBooks not connected):
 ${expenseLines}
-  - Contractor/Tech Payroll: $${data.payrollTotal.toLocaleString()} (from HCP job counts at $${p.pay_rate_per_job}/job flat — NOT included in the expense lines above)
-  - Total Expenses (incl. payroll): $${(expTotal + data.payrollTotal).toLocaleString()}
+  - Contractor/Tech Payroll: $${data.payrollTotal.toLocaleString()} (from HCP job counts at $${p.pay_rate_per_job}/job flat)
+  - Total Estimated Expenses: $${(expTotal + data.payrollTotal).toLocaleString()}
 
-NET PROFIT (revenue − expenses − payroll): $${netProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })} (${margin}% margin)
+NET PROFIT (estimated): $${netProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })} (${margin}% margin)
 
 PAYROLL (${data.month}) — REAL DATA:
 ${techLines}
@@ -124,11 +154,10 @@ INDUSTRY BENCHMARKS (residential cleaning):
 
 YOUR STYLE:
 - Give specific, actionable advice using the actual numbers above
-- When QuickBooks is connected, cite it as the source of truth for expenses and margins
 - Be concise and direct — no fluff
-- Flag anything unusual or worth watching
+- Flag that expenses are estimates and recommend connecting QuickBooks for exact figures
 - Always recommend consulting a CPA for tax and legal matters
-- Never make up data — only use what is provided above; if QuickBooks is not connected, say so when discussing expenses`;
+- Never make up data — only use what is provided above`;
 }
 
 const EMPTY_FIN_DATA: FinancialsData = {
@@ -284,16 +313,16 @@ export function LedgerPage() {
   useEffect(() => { loadData(); }, [loadData]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, chatLoading]);
 
-  /* Derived numbers — QuickBooks expenses when connected, else the estimate.
-     Tech payroll (from HCP) is always added on top; qboExpenseRows already
-     excludes payroll-type accounts so it is never double-counted. */
+  /* Derived numbers. When QuickBooks is connected it is the source of truth:
+     qbo.expenses already includes contractor/tech pay and qbo.netIncome is the
+     real bottom line, so we do NOT add the HCP payroll estimate on top. Only the
+     estimate fallback (QBO disconnected) layers payroll onto the mock expenses. */
   const revenue     = data?.totalRevenue ?? 0;
   const payroll     = data?.payrollTotal ?? 0;
   const expRows     = useMemo<ExpenseRow[]>(() => (qbo ? qboExpenseRows(qbo) : QB_EXPENSES_FALLBACK.rows), [qbo]);
-  const expTotal    = useMemo(() => expRows.reduce((s, r) => s + r.value, 0), [expRows]);
-  const totalExp    = expTotal + payroll;
-  const netProfit   = revenue - totalExp;
-  const margin      = revenue > 0 ? Math.round((netProfit / revenue) * 100) : 0;
+  const totalExp    = qbo ? Math.round(qbo.expenses) : QB_EXPENSES_FALLBACK.total + payroll;
+  const netProfit   = qbo ? Math.round(qbo.netIncome) : revenue - totalExp;
+  const margin      = qbo ? qbo.netMargin : (revenue > 0 ? Math.round((netProfit / revenue) * 100) : 0);
   const outstanding = data?.outstandingTotal ?? 0;
   const finnPrompt  = useMemo(
     () => buildFinnPrompt(data ?? EMPTY_FIN_DATA, qbo, profile),
@@ -334,7 +363,7 @@ export function LedgerPage() {
     },
     {
       label: "Total Expenses", value: dataLoading ? "—" : fmt$(totalExp),
-      sub: `Payroll ${fmt$(payroll)} + ${qbo ? "QuickBooks" : "QB Est."} ${fmt$(expTotal)}`,
+      sub: qbo ? "QuickBooks · incl. contractors" : `Payroll ${fmt$(payroll)} + Est. ${fmt$(QB_EXPENSES_FALLBACK.total)}`,
       color: "#ef4444", positive: false as boolean | null, onClick: undefined,
     },
     {
@@ -513,6 +542,9 @@ export function LedgerPage() {
                 <p className="text-xs font-semibold uppercase" style={{ color: "#6b7a90", letterSpacing: "0.6px" }}>
                   P&amp;L Summary · {data?.month ?? "May 2026"}
                 </p>
+                {qbo && (
+                  <p className="text-[10px] mt-0.5" style={{ color: "#94a3b8" }}>Expenses &amp; net from QuickBooks</p>
+                )}
               </div>
               <div className="px-4 py-3 space-y-1.5">
                 {dataLoading ? (
@@ -537,10 +569,14 @@ export function LedgerPage() {
                 <span className="text-xs font-bold" style={{ color: "#3db54a" }}>{dataLoading ? "—" : `+${fmt$(revenue)}`}</span>
               </div>
               <div className="px-4 pb-2 pt-1 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs" style={{ color: "#6b7a90" }}>Tech Payroll</span>
-                  <span className="text-xs font-semibold" style={{ color: "#ef4444" }}>{dataLoading ? "—" : `-${fmt$(payroll)}`}</span>
-                </div>
+                {/* When QBO is connected, contractor/tech pay is already inside
+                    the QuickBooks expense rows below — don't add it again. */}
+                {!qbo && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs" style={{ color: "#6b7a90" }}>Tech Payroll</span>
+                    <span className="text-xs font-semibold" style={{ color: "#ef4444" }}>{dataLoading ? "—" : `-${fmt$(payroll)}`}</span>
+                  </div>
+                )}
                 {expRows.slice(0, 6).map(row => (
                   <div key={row.label} className="flex items-center justify-between">
                     <span className="text-xs truncate pr-2" style={{ color: "#6b7a90" }}>{row.label}</span>
