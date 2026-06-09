@@ -65,10 +65,27 @@ const QBO_INCOME_SECTION_RE = /income|revenue|gross\s*profit|net\s*(operating\s*
  *  qbo.expenses — always show qbo.expenses as the real total. */
 function qboExpenseRows(qbo: QboPnl | null): ExpenseRow[] {
   if (!qbo) return [];
-  return qbo.byCategory
+  return (qbo.byCategory ?? [])
     .filter(c => !QBO_INCOME_SECTION_RE.test(c.section) && c.amount !== 0)
     .map(c => ({ label: c.name, value: Math.round(c.amount) }))
     .sort((a, b) => b.value - a.value);
+}
+
+/** Best-effort QBO income line items (largest first), for the connected P&L
+ *  card so its revenue section is on the same QuickBooks basis as its net. */
+function qboIncomeRows(qbo: QboPnl | null): ExpenseRow[] {
+  if (!qbo) return [];
+  return (qbo.byCategory ?? [])
+    .filter(c => /income|revenue/i.test(c.section) && !/gross|net/i.test(c.section) && c.amount !== 0)
+    .map(c => ({ label: c.name, value: Math.round(c.amount) }))
+    .sort((a, b) => b.value - a.value);
+}
+
+/** "Jun 2026 · MTD" from a QBO period (avoids Date parsing/timezone pitfalls). */
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function qboPeriodLabel(qbo: QboPnl): string {
+  const [y, m] = qbo.period.start.split("-");
+  return `${MONTHS[Number(m) - 1] ?? ""} ${y} · MTD`;
 }
 
 function buildFinnPrompt(data: FinancialsData, qbo: QboPnl | null, p: BusinessProfile): string {
@@ -540,10 +557,10 @@ export function LedgerPage() {
             <div className="bg-white rounded-lg overflow-hidden flex-shrink-0" style={{ border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
               <div className="px-4 py-3.5" style={{ borderBottom: "1px solid #f0f0f0" }}>
                 <p className="text-xs font-semibold uppercase" style={{ color: "#6b7a90", letterSpacing: "0.6px" }}>
-                  P&amp;L Summary · {data?.month ?? "May 2026"}
+                  P&amp;L Summary · {qbo ? qboPeriodLabel(qbo) : (data?.month ?? "May 2026")}
                 </p>
                 {qbo && (
-                  <p className="text-[10px] mt-0.5" style={{ color: "#94a3b8" }}>Expenses &amp; net from QuickBooks</p>
+                  <p className="text-[10px] mt-0.5" style={{ color: "#94a3b8" }}>Live from QuickBooks</p>
                 )}
               </div>
               <div className="px-4 py-3 space-y-1.5">
@@ -552,6 +569,14 @@ export function LedgerPage() {
                     <div key={i} className="flex items-center justify-between">
                       <div className="h-3 rounded w-24 animate-pulse" style={{ backgroundColor: "#f0f0f0" }} />
                       <div className="h-3 rounded w-12 animate-pulse" style={{ backgroundColor: "#f0f0f0" }} />
+                    </div>
+                  ))
+                ) : qbo ? (
+                  /* Connected → income on the same QuickBooks basis as the net. */
+                  qboIncomeRows(qbo).slice(0, 6).map(row => (
+                    <div key={row.label} className="flex items-center justify-between">
+                      <span className="text-xs truncate pr-2" style={{ color: "#6b7a90" }}>{row.label}</span>
+                      <span className="text-xs font-semibold flex-shrink-0" style={{ color: "#3db54a" }}>+{fmt$(row.value)}</span>
                     </div>
                   ))
                 ) : (
@@ -566,7 +591,7 @@ export function LedgerPage() {
               <div className="mx-4 border-t border-dashed border-gray-200 my-0.5" />
               <div className="px-4 py-2 flex items-center justify-between">
                 <span className="text-xs font-bold" style={{ color: "#1a2333" }}>Total Revenue</span>
-                <span className="text-xs font-bold" style={{ color: "#3db54a" }}>{dataLoading ? "—" : `+${fmt$(revenue)}`}</span>
+                <span className="text-xs font-bold" style={{ color: "#3db54a" }}>{dataLoading ? "—" : `+${fmt$(qbo ? Math.round(qbo.revenue) : revenue)}`}</span>
               </div>
               <div className="px-4 pb-2 pt-1 space-y-1.5">
                 {/* When QBO is connected, contractor/tech pay is already inside
@@ -583,6 +608,14 @@ export function LedgerPage() {
                     <span className="text-xs font-semibold flex-shrink-0" style={{ color: "#ef4444" }}>-{fmt$(row.value)}</span>
                   </div>
                 ))}
+                {/* Authoritative total so the card foots (the rows above are a
+                    best-effort breakdown that can under-sum qbo.expenses). */}
+                {qbo && (
+                  <div className="flex items-center justify-between pt-0.5">
+                    <span className="text-xs font-semibold" style={{ color: "#1a2333" }}>Total Expenses</span>
+                    <span className="text-xs font-bold" style={{ color: "#ef4444" }}>{dataLoading ? "—" : `-${fmt$(totalExp)}`}</span>
+                  </div>
+                )}
               </div>
               <div className="mx-4 border-t border-dashed border-gray-200 my-0.5" />
               <div className="px-4 py-3 flex items-center justify-between">
