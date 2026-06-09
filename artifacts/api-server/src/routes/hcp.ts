@@ -309,6 +309,22 @@ function resolveAmount(j: HcpJob): number | null {
 
 const CT = "America/Chicago";
 
+/** Year-month ("YYYY-MM") of an instant in Central time. en-CA yields
+ *  YYYY-MM-DD, so slicing 0..7 gives the Central month — this is what makes the
+ *  MTD boundary correct (a UTC boundary pulls late-night Central jobs into the
+ *  wrong month). Returns "" for missing/invalid dates. */
+function centralYearMonth(iso: string | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-CA", { timeZone: CT }).slice(0, 7);
+}
+
+/* Work statuses that count as finished, revenue-earning work — mirrors
+   normalizeStatus()'s "Complete" mapping. Scheduled / in_progress / cancelled /
+   unscheduled / estimates are excluded. */
+const EARNED_STATUSES = new Set(["completed", "needs_invoicing"]);
+
 function fmtCT(iso: string) {
   return new Date(iso).toLocaleTimeString("en-US", {
     timeZone: CT,
@@ -387,12 +403,17 @@ router.get("/hcp/financials", async (req, res) => {
     if (cached) { res.json(cached); return; }
 
     const now = new Date();
-    const monthStart  = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const monthEnd    = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
-    const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    /* Current month in CENTRAL time — the basis for all MTD filtering below. */
+    const monthPrefix = centralYearMonth(now.toISOString()); // e.g. "2026-06"
+    const [cy, cm] = monthPrefix.split("-").map(Number);     // cm is 1-based
+    /* Fetch window is intentionally WIDER than the Central month (±buffer days,
+       in UTC) so jobs whose scheduled_start lands just outside the month in UTC
+       are still pulled; the precise Central-month filter is applied in code. */
+    const monthStart  = new Date(Date.UTC(cy, cm - 1, 1) - 2 * 86400000).toISOString();
+    const monthEnd    = new Date(Date.UTC(cy, cm, 1) + 1 * 86400000).toISOString();
     /* Invoices are fetched over a 3-month window (current month + 2 prior)
        so outstanding/unpaid totals look further back than just this month. */
-    const invWindowStart = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString();
+    const invWindowStart = new Date(Date.UTC(cy, cm - 3, 1)).toISOString();
 
     const jobParams = (page: string) => ({
       page, page_size: "100",
@@ -416,6 +437,47 @@ router.get("/hcp/financials", async (req, res) => {
     ]);
 
     const allJobs = [...j1.jobs, ...j2.jobs, ...j3.jobs];
+
+    /* ── MTD job set ──────────────────────────────────────────────
+       Count a job toward this month's revenue ONLY if it is:
+         1. de-duplicated by job id (guards against page overlap / recurring
+            instances surfacing twice — each HCP visit is its own id), and
+         2. finished revenue-earning work (EARNED_STATUSES), not scheduled /
+            in-progress / cancelled / estimate, and
+         3. dated within the CURRENT month in Central time.
+       HCP's job object exposes no completion timestamp, so we use the job's
+       scheduled_start (fallback created_at) converted to the Central month —
+       for a same-day cleaning business this is the work date. */
+    const seenJobIds = new Set<string>();
+    const statusBreakdown: Record<string, number> = {};
+    const completedJobs = allJobs.filter((job) => {
+      if (!job.id || seenJobIds.has(job.id)) return false;
+      seenJobIds.add(job.id);
+      statusBreakdown[job.work_status] = (statusBreakdown[job.work_status] ?? 0) + 1;
+      if (!EARNED_STATUSES.has(job.work_status)) return false;
+      const jobMonth = centralYearMonth(job.schedule?.scheduled_start ?? job.created_at);
+      return jobMonth === monthPrefix;
+    });
+
+    /* Auditable log: the exact jobs counted, plus the status breakdown of every
+       job in the fetch window — so the MTD count can be reconciled on deploy. */
+    req.log.info(
+      {
+        monthPrefix,
+        fetchedJobs: allJobs.length,
+        includedCount: completedJobs.length,
+        statusBreakdown,
+        includedJobs: completedJobs.map((j) => ({
+          id: j.id,
+          status: j.work_status,
+          date: centralYearMonth(j.schedule?.scheduled_start ?? j.created_at),
+          scheduledStart: j.schedule?.scheduled_start ?? j.created_at ?? "",
+          amount: resolveAmount(j) ?? 0,
+        })),
+      },
+      "hcp /financials MTD job set",
+    );
+
     /* 3-month window — used for outstanding invoices */
     const windowInvoices = [...(inv1.invoices ?? []), ...(inv2.invoices ?? []), ...(inv3.invoices ?? []), ...(inv4.invoices ?? [])];
     /* Current month only — keeps paid totals scoped to MTD */
@@ -436,7 +498,7 @@ router.get("/hcp/financials", async (req, res) => {
     const techMap: Record<string, { color: string; jobs: number; revenue: number }> = {};
     let totalRevenue = 0;
 
-    for (const job of allJobs) {
+    for (const job of completedJobs) {
       const amount = resolveAmount(job) ?? 0;
       totalRevenue += amount;
 
@@ -506,15 +568,15 @@ router.get("/hcp/financials", async (req, res) => {
       .sort((a, b) => b.amount - a.amount);
 
     const payload = {
-      month:               now.toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+      month:               now.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: CT }),
       totalRevenue:        Math.round(totalRevenue * 100) / 100,
-      jobCount:            allJobs.length,
+      jobCount:            completedJobs.length,
       totalJobItems:       j1.total_items,
       paidTotal:           Math.round(paidTotal * 100) / 100,
       paidCount,
       outstandingTotal:    Math.round(outstandingTotal * 100) / 100,
       outstandingInvoices,
-      avgJobValue:         allJobs.length ? Math.round((totalRevenue / allJobs.length) * 100) / 100 : 0,
+      avgJobValue:         completedJobs.length ? Math.round((totalRevenue / completedJobs.length) * 100) / 100 : 0,
       revenueByCategory,
       techs,
       payrollTotal,

@@ -263,7 +263,9 @@ export function LedgerPage() {
   const kpis = [
     {
       label: "Monthly Revenue", value: dataLoading ? "—" : fmt$(revenue),
-      sub: data ? `${data.jobCount} of ${data.totalJobItems} Jobs · Avg ${fmt$(data.avgJobValue)}` : "Loading…",
+      // Source tag so this HCP "revenue pace" figure isn't read as a
+      // discrepancy against the QuickBooks "booked" P&L card.
+      sub: data ? `HouseCall Pro · ${data.jobCount} completed jobs · Avg ${fmt$(data.avgJobValue)}` : "Loading…",
       color: "#3db54a", positive: true as boolean | null, onClick: undefined as (() => void) | undefined,
     },
     {
