@@ -32,6 +32,12 @@ function periodRange(period: string): { start: string; end: string } {
   const y = now.getUTCFullYear();
   const m = now.getUTCMonth();
 
+  if (period === "month" || period === "mtd" || period === "this_month") {
+    // Current month to date — aligns QBO expenses with the HouseCall Pro
+    // current-month revenue the Ledger/Finn page shows.
+    const start = new Date(Date.UTC(y, m, 1));
+    return { start: ymd(start), end: ymd(now) };
+  }
   if (period === "last_month") {
     const start = new Date(Date.UTC(y, m - 1, 1));
     const end = new Date(Date.UTC(y, m, 0)); // day 0 of this month = last day of prev
